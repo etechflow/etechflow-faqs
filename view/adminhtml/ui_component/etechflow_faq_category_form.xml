@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<form xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
+
+    <argument name="data" xsi:type="array">
+        <item name="js_config" xsi:type="array">
+            <item name="provider" xsi:type="string">etechflow_faq_category_form.etechflow_faq_category_form_data_source</item>
+        </item>
+        <item name="label" xsi:type="string" translate="true">Category Information</item>
+        <item name="template" xsi:type="string">templates/form/collapsible</item>
+    </argument>
+
+    <settings>
+        <buttons>
+            <button name="back">
+                <url path="*/*/"/>
+                <class>back</class>
+                <label translate="true">Back</label>
+            </button>
+            <button name="save_and_continue">
+                <class>save</class>
+                <label translate="true">Save &amp; Continue Edit</label>
+                <param name="back" xsi:type="boolean">true</param>
+            </button>
+            <button name="save">
+                <class>save primary</class>
+                <label translate="true">Save Category</label>
+            </button>
+        </buttons>
+        <namespace>etechflow_faq_category_form</namespace>
+        <dataScope>data</dataScope>
+        <deps>
+            <dep>etechflow_faq_category_form.etechflow_faq_category_form_data_source</dep>
+        </deps>
+    </settings>
+
+    <dataSource name="etechflow_faq_category_form_data_source" component="Magento_Ui/js/form/provider">
+        <settings>
+            <submitUrl path="etechflow_faq/category/save"/>
+        </settings>
+        <dataProvider class="Etechflow\Faq\Ui\DataProvider\Category\Form\DataProvider"
+                      name="etechflow_faq_category_form_data_source">
+            <settings>
+                <requestFieldName>category_id</requestFieldName>
+                <primaryFieldName>category_id</primaryFieldName>
+            </settings>
+        </dataProvider>
+    </dataSource>
+
+    <fieldset name="general">
+        <settings>
+            <label translate="true">General</label>
+        </settings>
+
+        <field name="category_id" formElement="input">
+            <settings>
+                <dataType>text</dataType>
+                <visible>false</visible>
+            </settings>
+        </field>
+
+        <field name="label" sortOrder="10" formElement="input">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Category Label</label>
+                <validation>
+                    <rule name="required-entry" xsi:type="boolean">true</rule>
+                </validation>
+            </settings>
+        </field>
+
+        <field name="identifier" sortOrder="20" formElement="input">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">URL Identifier</label>
+                <notice translate="true">Auto-generated from label if left blank. Lowercase letters, numbers and hyphens only.</notice>
+            </settings>
+        </field>
+
+        <field name="icon_key" sortOrder="30" formElement="select">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Icon Style</label>
+                <notice translate="true">Built-in SVG. Override with a media image path below.</notice>
+            </settings>
+            <formElements>
+                <select>
+                    <settings>
+                        <options class="Etechflow\Faq\Model\Source\IconKey"/>
+                    </settings>
+                </select>
+            </formElements>
+        </field>
+
+        <field name="icon_image" sortOrder="35" formElement="input">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Icon Image (optional)</label>
+                <notice translate="true">Media path, e.g. "etechflow_faq/icons/orders.png". Overrides the Icon Style above.</notice>
+            </settings>
+        </field>
+
+        <field name="sort_order" sortOrder="40" formElement="input">
+            <settings>
+                <dataType>number</dataType>
+                <label translate="true">Sort Order</label>
+            </settings>
+        </field>
+
+        <field name="is_active" sortOrder="50" formElement="select">
+            <settings>
+                <dataType>number</dataType>
+                <label translate="true">Active</label>
+            </settings>
+            <formElements>
+                <select>
+                    <settings>
+                        <options class="Etechflow\Faq\Model\Source\IsActive"/>
+                    </settings>
+                </select>
+            </formElements>
+        </field>
+    </fieldset>
+</form>

@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<form xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
+
+    <argument name="data" xsi:type="array">
+        <item name="js_config" xsi:type="array">
+            <item name="provider" xsi:type="string">etechflow_faq_item_form.etechflow_faq_item_form_data_source</item>
+        </item>
+        <item name="label" xsi:type="string" translate="true">FAQ Information</item>
+        <item name="template" xsi:type="string">templates/form/collapsible</item>
+    </argument>
+
+    <settings>
+        <buttons>
+            <button name="back">
+                <url path="*/*/"/>
+                <class>back</class>
+                <label translate="true">Back</label>
+            </button>
+            <button name="save_and_continue">
+                <class>save</class>
+                <label translate="true">Save &amp; Continue Edit</label>
+                <param name="back" xsi:type="boolean">true</param>
+            </button>
+            <button name="save">
+                <class>save primary</class>
+                <label translate="true">Save FAQ</label>
+            </button>
+        </buttons>
+        <namespace>etechflow_faq_item_form</namespace>
+        <dataScope>data</dataScope>
+        <deps>
+            <dep>etechflow_faq_item_form.etechflow_faq_item_form_data_source</dep>
+        </deps>
+    </settings>
+
+    <dataSource name="etechflow_faq_item_form_data_source" component="Magento_Ui/js/form/provider">
+        <settings>
+            <submitUrl path="etechflow_faq/item/save"/>
+        </settings>
+        <dataProvider class="Etechflow\Faq\Ui\DataProvider\Item\Form\DataProvider"
+                      name="etechflow_faq_item_form_data_source">
+            <settings>
+                <requestFieldName>item_id</requestFieldName>
+                <primaryFieldName>item_id</primaryFieldName>
+            </settings>
+        </dataProvider>
+    </dataSource>
+
+    <fieldset name="general">
+        <settings>
+            <label translate="true">FAQ Details</label>
+        </settings>
+
+        <field name="item_id" formElement="input">
+            <settings>
+                <dataType>text</dataType>
+                <visible>false</visible>
+            </settings>
+        </field>
+
+        <field name="category_id" sortOrder="10" formElement="select">
+            <settings>
+                <dataType>number</dataType>
+                <label translate="true">Category</label>
+                <validation>
+                    <rule name="required-entry" xsi:type="boolean">true</rule>
+                </validation>
+            </settings>
+            <formElements>
+                <select>
+                    <settings>
+                        <options class="Etechflow\Faq\Model\Source\Category"/>
+                    </settings>
+                </select>
+            </formElements>
+        </field>
+
+        <field name="question" sortOrder="20" formElement="input">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Question</label>
+                <validation>
+                    <rule name="required-entry" xsi:type="boolean">true</rule>
+                </validation>
+            </settings>
+        </field>
+
+        <field name="url_key" sortOrder="25" formElement="input">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">URL Key</label>
+                <notice translate="true">Leave blank to auto-generate from the question. Unique per category.</notice>
+            </settings>
+        </field>
+
+        <field name="subtitle" sortOrder="28" formElement="input">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Subtitle</label>
+                <notice translate="true">One-line summary shown under the H1 on the detail page.</notice>
+            </settings>
+        </field>
+
+        <field name="answer" sortOrder="30" formElement="textarea">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Answer</label>
+                <notice translate="true">Plain text or basic HTML: &lt;p&gt;, &lt;strong&gt;, &lt;a&gt;, &lt;ul&gt;/&lt;li&gt;, &lt;h2&gt;/&lt;h3&gt;, &lt;span style="color:..."&gt;.</notice>
+                <validation>
+                    <rule name="required-entry" xsi:type="boolean">true</rule>
+                </validation>
+            </settings>
+            <formElements>
+                <textarea>
+                    <settings>
+                        <rows>12</rows>
+                    </settings>
+                </textarea>
+            </formElements>
+        </field>
+
+        <field name="sort_order" sortOrder="40" formElement="input">
+            <settings>
+                <dataType>number</dataType>
+                <label translate="true">Sort Order</label>
+            </settings>
+        </field>
+
+        <field name="is_active" sortOrder="50" formElement="select">
+            <settings>
+                <dataType>number</dataType>
+                <label translate="true">Active</label>
+            </settings>
+            <formElements>
+                <select>
+                    <settings>
+                        <options class="Etechflow\Faq\Model\Source\IsActive"/>
+                    </settings>
+                </select>
+            </formElements>
+        </field>
+
+        <field name="is_featured" sortOrder="55" formElement="select">
+            <settings>
+                <dataType>number</dataType>
+                <label translate="true">Featured</label>
+                <notice translate="true">Pinned to the top + shown in the "Popular questions" strip on /faqs.</notice>
+            </settings>
+            <formElements>
+                <select>
+                    <settings>
+                        <options class="Magento\Config\Model\Config\Source\Yesno"/>
+                    </settings>
+                </select>
+            </formElements>
+        </field>
+    </fieldset>
+
+    <fieldset name="seo">
+        <settings>
+            <label translate="true">SEO</label>
+            <collapsible>true</collapsible>
+            <opened>false</opened>
+        </settings>
+
+        <field name="meta_title" sortOrder="10" formElement="input">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Meta Title</label>
+            </settings>
+        </field>
+
+        <field name="meta_description" sortOrder="20" formElement="textarea">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Meta Description</label>
+            </settings>
+        </field>
+    </fieldset>
+</form>

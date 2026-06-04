@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Webapi:etc/webapi.xsd">
+
+    <!-- All categories with nested FAQ items -->
+    <route url="/V1/etechflow/faq" method="GET">
+        <service class="Etechflow\Faq\Api\FaqRepositoryInterface" method="getAll"/>
+        <resources>
+            <resource ref="anonymous"/>
+        </resources>
+    </route>
+
+    <!-- Categories list only (no items) -->
+    <route url="/V1/etechflow/faq/categories" method="GET">
+        <service class="Etechflow\Faq\Api\FaqRepositoryInterface" method="getCategories"/>
+        <resources>
+            <resource ref="anonymous"/>
+        </resources>
+    </route>
+
+    <!-- Items for a specific category -->
+    <route url="/V1/etechflow/faq/categories/:categoryId/items" method="GET">
+        <service class="Etechflow\Faq\Api\FaqRepositoryInterface" method="getItemsByCategoryId"/>
+        <resources>
+            <resource ref="anonymous"/>
+        </resources>
+    </route>
+
+</routes>

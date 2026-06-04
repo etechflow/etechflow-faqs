@@ -1,0 +1,989 @@
+<?php
+declare(strict_types=1);
+/** @var \Etechflow\Faq\Block\Listing $block */
+/** @var \Magento\Framework\Escaper $escaper */
+
+$cfg = $block->getConfig();
+
+// Brand tokens
+// Emitted raw inside <style> (CSS context) below, so sanitize to a CSS-safe
+// whitelist here. (escapeHtmlAttr would turn "#" into "&#x23;" and break the value.)
+$cPrimary   = preg_replace('/[^#a-zA-Z0-9(),.%\s-]/', '', $cfg->get('branding/primary_color')   ?: '#C41818');
+$cSecondary = preg_replace('/[^#a-zA-Z0-9(),.%\s-]/', '', $cfg->get('branding/secondary_color') ?: '#0535F5');
+$cText      = preg_replace('/[^#a-zA-Z0-9(),.%\s-]/', '', $cfg->get('branding/text_color')      ?: '#0E1025');
+$fontStack  = $cfg->getFontFamily(); // "" = inherit from host theme
+
+// SEO + features
+$schemaOn      = $cfg->isEnabled('seo/enable_schema_jsonld');
+$ogOn          = $cfg->isEnabled('seo/enable_opengraph');
+$featuredOn    = $cfg->isEnabled('features/enable_featured_strip');
+$ajaxSearchOn  = $cfg->isEnabled('features/enable_ajax_search');
+$submissionsOn = $cfg->isEnabled('features/enable_visitor_submissions');
+$tagsOn        = $cfg->isEnabled('features/enable_tags');
+$featured      = $featuredOn ? $block->getFeaturedItems(6) : [];
+$allTags       = $tagsOn ? $block->getTags() : [];
+$searchUrl     = $block->getSearchEndpoint();
+
+// Configurable icon keys for the 4 "Need more help" cards
+$phoneIconKey       = $cfg->get('contact/phone_icon')         ?: 'phone';
+$emailIconKey       = $cfg->get('contact/email_icon')         ?: 'email';
+$contactFormIconKey = $cfg->get('contact/contact_form_icon')  ?: 'chat';
+$storeFinderIconKey = $cfg->get('contact/store_finder_icon')  ?: 'map-pin';
+
+// Icon library used by Need-more-help cards
+$nmhIcons = [
+    'phone'    => '<svg width="18" height="18" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>',
+    'email'    => '<svg width="18" height="18" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>',
+    'chat'     => '<svg width="18" height="18" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/></svg>',
+    'map-pin'  => '<svg width="18" height="18" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>',
+    'whatsapp' => '<svg width="18" height="18" fill="#fff" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.174.198-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413"/></svg>',
+    'clock'    => '<svg width="18" height="18" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+    'help'     => '<svg width="18" height="18" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"/></svg>',
+    'support'  => '<svg width="18" height="18" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-4.142-3.358-7.5-7.5-7.5S4.5 7.858 4.5 12m15 0v1.5a1.5 1.5 0 01-1.5 1.5h-1a1.5 1.5 0 01-1.5-1.5V12m4.5 0H21m-16.5 0H3m1.5 0v1.5A1.5 1.5 0 006 15h1a1.5 1.5 0 001.5-1.5V12m-4.5 0a7.5 7.5 0 0115 0"/></svg>',
+    'building' => '<svg width="18" height="18" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"/></svg>',
+    'truck'    => '<svg width="18" height="18" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/></svg>',
+    'shield'   => '<svg width="18" height="18" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"/></svg>',
+    'star'     => '<svg width="18" height="18" fill="#fff" viewBox="0 0 24 24" aria-hidden="true"><path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.32.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.562.562 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.562.562 0 01.32-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/></svg>',
+];
+
+// Hero — empty config = empty (no fallback). Clear in admin to hide.
+$heroImage    = $cfg->getHeroImageUrl();
+$heroTitle    = $cfg->get('hero/title');
+$heroSubtitle = $cfg->get('hero/subtitle');
+
+// Contact (used in "need more help" footer)
+$phone           = $cfg->get('contact/phone');
+$phoneHours      = $cfg->get('contact/phone_hours');
+$email           = $cfg->get('contact/email');
+$emailLead       = $cfg->get('contact/email_response_time');
+$contactFormUrl  = $cfg->get('contact/contact_form_url') ?: 'contact';
+$storeFinderUrl  = $cfg->get('contact/store_finder_url');
+
+// Display toggles
+$enableSearch = $cfg->isEnabled('display/enable_search_widget');
+$heroOn       = $cfg->isEnabled('hero/enable');
+$trustBarOn   = $cfg->isEnabled('display/show_trust_bar');
+$nmhOn        = $cfg->isEnabled('contact/show_need_more_help');
+
+$cats = $block->getCategoriesWithItems();
+
+$icons = [
+    'orders'    => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"/></svg>',
+    'returns'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>',
+    'delivery'  => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/></svg>',
+    'payment'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"/></svg>',
+    'collect'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>',
+    'account'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z"/></svg>',
+    'support'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-4.142-3.358-7.5-7.5-7.5S4.5 7.858 4.5 12m15 0v1.5a1.5 1.5 0 01-1.5 1.5h-1a1.5 1.5 0 01-1.5-1.5V12m4.5 0H21m-16.5 0H3m1.5 0v1.5A1.5 1.5 0 006 15h1a1.5 1.5 0 001.5-1.5V12m-4.5 0a7.5 7.5 0 0115 0"/></svg>',
+    'technical' => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>',
+    'locksmith' => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/></svg>',
+];
+
+// Build a JS-friendly representation of categories for the search filter + modal
+$catsForJs = [];
+foreach ($cats as $c) {
+    $items = method_exists($c, 'getItems') ? ($c->getItems() ?? []) : [];
+    $faqs  = [];
+    foreach ($items as $it) {
+        $faqs[] = [
+            'q'    => (string) $it->getQuestion(),
+            'a'    => (string) $it->getAnswer(),
+            'slug' => (string) ($it->getData('url_key') ?? ''),
+        ];
+    }
+    $catsForJs[] = [
+        'id'    => (string) $c->getData('identifier'),
+        'label' => (string) $c->getData('label'),
+        'faqs'  => $faqs,
+    ];
+}
+$catsJson = json_encode($catsForJs, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
+
+/**
+ * Render an icon for a category: uploaded image (icon_image) if present,
+ * else fall back to the built-in SVG indexed by icon_key.
+ */
+$renderCatIcon = function ($cat) use ($icons, $cfg, $escaper): string {
+    if (!$cat) {
+        return $icons['support'];
+    }
+    $img = (string) $cat->getData('icon_image');
+    if ($img !== '') {
+        $url = $cfg->resolveMediaUrl($img);
+        if ($url !== '') {
+            return '<img src="' . $escaper->escapeHtmlAttr($url) . '" alt="" loading="lazy" style="width:100%;height:100%;object-fit:contain;display:block">';
+        }
+    }
+    $key = (string) $cat->getData('icon_key');
+    return $icons[$key] ?? $icons['support'];
+};
+
+// Build FAQPage JSON-LD covering every active Q&A
+$schemaPayload = null;
+if ($schemaOn) {
+    $mainEntity = [];
+    foreach ($cats as $c) {
+        $cIdent = (string) $c->getData('identifier');
+        $cItems = method_exists($c, 'getItems') ? ($c->getItems() ?? []) : [];
+        foreach ($cItems as $it) {
+            $slug = (string) ($it->getData('url_key') ?? '');
+            $mainEntity[] = [
+                '@type'          => 'Question',
+                'name'           => (string) $it->getQuestion(),
+                'url'            => $slug !== '' ? $block->getDetailUrl($cIdent, $slug) : null,
+                'acceptedAnswer' => [
+                    '@type' => 'Answer',
+                    'text'  => trim(strip_tags((string) $it->getAnswer())),
+                ],
+            ];
+        }
+    }
+    if (!empty($mainEntity)) {
+        $schemaPayload = [
+            '@context'   => 'https://schema.org',
+            '@type'      => 'FAQPage',
+            'mainEntity' => $mainEntity,
+        ];
+    }
+}
+
+$listingUrl = $block->getUrl('faqs');
+$ogTitle    = $heroTitle;
+$ogDesc     = $heroSubtitle;
+?>
+<?php if ($ogOn): ?>
+<meta property="og:type" content="website">
+<meta property="og:title" content="<?= $escaper->escapeHtmlAttr($ogTitle) ?>">
+<meta property="og:description" content="<?= $escaper->escapeHtmlAttr($ogDesc) ?>">
+<meta property="og:url" content="<?= $escaper->escapeUrl($listingUrl) ?>">
+<?php if ($heroImage): ?><meta property="og:image" content="<?= $escaper->escapeUrl($heroImage) ?>"><?php endif; ?>
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="<?= $escaper->escapeHtmlAttr($ogTitle) ?>">
+<meta name="twitter:description" content="<?= $escaper->escapeHtmlAttr($ogDesc) ?>">
+<?php endif; ?>
+<link rel="canonical" href="<?= $escaper->escapeUrl($listingUrl) ?>">
+<?php if ($schemaPayload): ?>
+<script type="application/ld+json"><?= /* @noEscape */ json_encode($schemaPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
+<?php endif; ?>
+<style>
+.kfaq-list{
+    --kfaq-primary:<?= /* @noEscape */ $cPrimary ?>;
+    --kfaq-secondary:<?= /* @noEscape */ $cSecondary ?>;
+    --kfaq-text:<?= /* @noEscape */ $cText ?>;
+    --kfaq-bg:#f7f8fb;
+    --kfaq-card:#fff;
+    --kfaq-border:#e5e7eb;
+    --kfaq-muted:#6b7280;
+    --kfaq-mute2:#9ca3af;
+    --kfaq-mute3:#d1d5db;
+    color:var(--kfaq-text);
+    <?php if ($fontStack !== ''): ?>font-family:<?= /* @noEscape */ $fontStack ?>;<?php endif; ?>
+    overflow-x:hidden;
+    width:100%;
+    max-width:100vw;
+    box-sizing:border-box;
+}
+.kfaq-list *,.kfaq-list *::before,.kfaq-list *::after{box-sizing:border-box;max-width:100%}
+.kfaq-list a{text-decoration:none;color:inherit}
+.kfaq-list img{max-width:100%;height:auto;display:block}
+.kfaq-list ul{list-style:none;margin:0;padding:0}
+.kfaq-shell{max-width:1280px;margin:0 auto;padding:0 1rem}
+
+/* Responsive visibility helpers */
+.kfaq-desktop-only{display:none}
+.kfaq-mobile-only{display:block}
+@media(min-width:1024px){
+    .kfaq-desktop-only{display:block}
+    .kfaq-mobile-only{display:none}
+}
+
+/* ── Mobile search bar (above hero) ── */
+.kfaq-msearch{padding:12px 1rem 0}
+.kfaq-msearch-inner{display:flex;border-radius:8px;overflow:hidden;border:1px solid var(--kfaq-border);background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.kfaq-msearch-input{position:relative;flex:1}
+.kfaq-msearch-input svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--kfaq-mute2);pointer-events:none}
+.kfaq-msearch-input input{width:100%;padding:11px 10px 11px 34px;border:none;font-size:.875em;color:var(--kfaq-text);background:transparent;outline:none;font-family:inherit}
+.kfaq-msearch-go{padding:11px 18px;background:var(--kfaq-secondary) !important;color:#fff !important;font-weight:700;font-size:.8em;border:none;cursor:pointer;flex-shrink:0;white-space:nowrap;font-family:inherit}
+
+/* ── Hero ── */
+.kfaq-hero-wrap{padding:12px 0 0}
+.kfaq-hero{position:relative;min-height:340px;overflow:hidden;border-radius:12px}
+.kfaq-hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;pointer-events:none}
+.kfaq-hero-fallback{position:absolute;inset:0;background:linear-gradient(135deg,var(--kfaq-text) 0%,#1a1d3d 60%,var(--kfaq-secondary) 130%)}
+.kfaq-hero-inner{position:relative;z-index:1;min-height:340px;display:flex;align-items:center;padding:48px 40px}
+.kfaq-hero-card{max-width:500px;color:var(--kfaq-text)}
+.kfaq-hero-img + .kfaq-hero-inner .kfaq-hero-card,.kfaq-hero-fallback + .kfaq-hero-inner .kfaq-hero-card{color:var(--kfaq-text)}
+.kfaq-hero-fallback ~ .kfaq-hero-inner .kfaq-hero-card{color:#fff}
+.kfaq-hero-eyebrow{font-size:.65em;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--kfaq-secondary)}
+.kfaq-hero-fallback ~ .kfaq-hero-inner .kfaq-hero-eyebrow{color:#93a8ff}
+.kfaq-hero-card h1{font-size:2.75em;font-weight:900;margin:8px 0 0;line-height:1.1}
+.kfaq-hero-card p{color:var(--kfaq-muted);margin-top:14px;font-size:.95em;max-width:360px;line-height:1.6}
+.kfaq-hero-fallback ~ .kfaq-hero-inner .kfaq-hero-card p{color:rgba(220,225,255,.85)}
+.kfaq-hero-search{margin-top:28px;display:flex;align-items:stretch;max-width:400px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.kfaq-hero-search-input{position:relative;flex:1}
+.kfaq-hero-search-input svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--kfaq-mute2);pointer-events:none}
+.kfaq-hero-search-input input{width:100%;height:100%;padding:13px 12px 13px 38px;border:1px solid var(--kfaq-border);border-right:none;border-radius:8px 0 0 8px;font-size:.875em;color:var(--kfaq-text);background:#fff;outline:none;font-family:inherit}
+.kfaq-list .kfaq-hero-search-go,.kfaq-list button.kfaq-hero-search-go,.kfaq-list .kfaq-msearch-go,.kfaq-list button.kfaq-msearch-go{padding:13px 24px !important;background:#0535F5 !important;background-color:#0535F5 !important;color:#ffffff !important;font-weight:700 !important;font-size:.875em !important;border:0 !important;border-radius:0 8px 8px 0 !important;cursor:pointer !important;white-space:nowrap !important;font-family:inherit !important;display:inline-block !important;visibility:visible !important;opacity:1 !important;text-decoration:none !important}
+.kfaq-list .kfaq-hero-search-go:hover,.kfaq-list .kfaq-msearch-go:hover{filter:brightness(.92) !important}
+
+/* Mobile hero */
+.kfaq-hero-m{position:relative;height:210px;overflow:hidden;border-radius:12px}
+.kfaq-hero-m .kfaq-hero-img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center}
+.kfaq-hero-m-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(to right,rgba(14,16,37,.75) 0%,rgba(14,16,37,.35) 65%,rgba(14,16,37,.1) 100%)}
+.kfaq-hero-m-inner{position:relative;z-index:1;height:210px;display:flex;align-items:center;padding:20px 18px}
+.kfaq-hero-m-card{max-width:52%;color:#fff}
+.kfaq-hero-m-eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#93a8ff;display:block;margin-bottom:5px}
+.kfaq-hero-m-card h1{font-size:1.3em;font-weight:900;color:#fff;margin:0 0 7px;line-height:1.2}
+.kfaq-hero-m-card p{font-size:.72em;color:rgba(220,225,255,.9);line-height:1.45;margin:0}
+
+/* ── Featured strip ── */
+.kfaq-featured-wrap{padding:0 0 12px}
+.kfaq-featured-head{padding:16px 0 12px}
+.kfaq-featured-eyebrow{font-size:.65em;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--kfaq-primary)}
+.kfaq-featured-head h2{font-size:1.4em;font-weight:900;color:var(--kfaq-text);margin:4px 0 0;letter-spacing:-.005em}
+.kfaq-featured-grid{display:grid;grid-template-columns:1fr;gap:10px}
+@media(min-width:640px){.kfaq-featured-grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1024px){.kfaq-featured-grid{grid-template-columns:repeat(3,1fr)}}
+.kfaq-featured-card{display:flex;flex-direction:column;background:#fff;border:1px solid var(--kfaq-border);border-radius:12px;padding:14px 16px;transition:all .15s;position:relative;overflow:hidden}
+.kfaq-featured-card::before{content:"★";position:absolute;top:-4px;right:8px;font-size:14px;color:var(--kfaq-primary);opacity:.45}
+.kfaq-featured-card:hover{border-color:var(--kfaq-primary);box-shadow:0 8px 20px -8px rgba(0,0,0,.12);transform:translateY(-1px)}
+.kfaq-featured-badge{display:inline-block;font-size:.56em;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--kfaq-primary);background:rgba(196,24,24,.08);padding:3px 7px;border-radius:4px;margin-bottom:8px;align-self:flex-start}
+.kfaq-featured-q{font-size:.88em;font-weight:800;color:var(--kfaq-text);line-height:1.4;margin:0 0 8px}
+.kfaq-featured-arrow{margin-top:auto;display:inline-flex;align-items:center;gap:6px;color:var(--kfaq-secondary);font-size:.68em;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+
+/* ── AJAX search dropdown ── */
+.kfaq-suggest{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid var(--kfaq-border);border-radius:8px;box-shadow:0 8px 24px -8px rgba(0,0,0,.15);z-index:50;max-height:340px;overflow:auto;display:none}
+.kfaq-suggest.is-on{display:block}
+.kfaq-suggest a{display:flex;flex-direction:column;gap:2px;padding:10px 14px;text-decoration:none;color:var(--kfaq-text);border-bottom:1px solid var(--kfaq-border-soft, #f3f4f6)}
+.kfaq-suggest a:last-child{border-bottom:none}
+.kfaq-suggest a:hover{background:#f5f6fb}
+.kfaq-suggest .q{font-size:.85em;font-weight:700;line-height:1.35}
+.kfaq-suggest .cat{font-size:.62em;font-weight:700;color:var(--kfaq-secondary);text-transform:uppercase;letter-spacing:.08em}
+.kfaq-suggest .none{padding:14px;font-size:.8em;color:var(--kfaq-mute2);text-align:center}
+.kfaq-hero-search,.kfaq-msearch-inner{position:relative}
+
+/* ── Categories ── */
+.kfaq-cats{}
+.kfaq-cats-inner{padding:16px 1rem 24px}
+.kfaq-cats-grid-wrap{border:1px solid var(--kfaq-border);overflow:hidden}
+.kfaq-cats-grid{display:grid;grid-template-columns:repeat(3,1fr);background:var(--kfaq-border);gap:1px}
+.kfaq-cat-card{background:var(--kfaq-card);padding:28px 24px}
+.kfaq-cat-card.is-hidden{display:none}
+.kfaq-cat-head{width:100%;display:flex;align-items:center;gap:14px;cursor:pointer;background:none;border:none;padding:6px;margin:-6px;border-radius:8px;text-align:left;transition:background .15s;font-family:inherit;color:inherit}
+.kfaq-cat-head:hover{background:#f0f4ff}
+.kfaq-cat-head .kfaq-cat-ico{width:40px;height:40px;flex-shrink:0}
+.kfaq-cat-head .kfaq-cat-ico svg{width:100%;height:100%;stroke-width:2.5}
+.kfaq-cat-head .kfaq-cat-label{font-size:.85em;font-weight:900;letter-spacing:.07em;text-transform:uppercase;flex:1}
+.kfaq-cat-head .kfaq-cat-chev{width:14px;height:14px;flex-shrink:0;opacity:.5;color:var(--kfaq-secondary)}
+.kfaq-cat-card.kfaq-color-primary .kfaq-cat-ico,.kfaq-cat-card.kfaq-color-primary .kfaq-cat-label{color:var(--kfaq-primary)}
+.kfaq-cat-card.kfaq-color-secondary .kfaq-cat-ico,.kfaq-cat-card.kfaq-color-secondary .kfaq-cat-label{color:var(--kfaq-secondary)}
+.kfaq-cat-list{margin:18px 0 12px;display:flex;flex-direction:column}
+.kfaq-cat-list li{border-top:1px solid #f3f4f6}
+.kfaq-cat-list li.is-hidden{display:none}
+.kfaq-q-link{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;color:inherit}
+.kfaq-q-link:hover .kfaq-q-text{color:var(--kfaq-secondary)}
+.kfaq-q-text{font-size:.82em;font-weight:700;color:#374151;line-height:1.4;transition:color .15s}
+.kfaq-q-arrow{width:14px;height:14px;flex-shrink:0;color:var(--kfaq-mute2);transition:color .15s,transform .15s}
+.kfaq-q-link:hover .kfaq-q-arrow{color:var(--kfaq-secondary);transform:translateX(2px)}
+
+/* Mobile category list */
+.kfaq-cats-m{background:var(--kfaq-card);border:1px solid var(--kfaq-border);border-radius:10px;overflow:hidden}
+.kfaq-cats-m > .kfaq-cat-m{}
+.kfaq-cats-m > .kfaq-cat-m + .kfaq-cat-m{border-top:1px solid var(--kfaq-border)}
+.kfaq-cat-m.is-hidden{display:none}
+.kfaq-cat-m-btn{width:100%;display:flex;align-items:center;gap:12px;padding:13px 14px;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit;color:inherit}
+.kfaq-cat-m-head{display:flex;align-items:center;gap:12px;padding:13px 14px;border-bottom:1px solid #f3f4f6}
+.kfaq-cat-m-list{margin:0;padding:4px 14px 12px}
+.kfaq-cat-m-list li{border-top:1px solid #f3f4f6}
+.kfaq-cat-m-list li:first-child{border-top:none}
+.kfaq-cat-m-list li.is-hidden{display:none}
+.kfaq-cat-m-ico{width:48px;height:48px;flex-shrink:0;border:1px solid var(--kfaq-border);border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;padding:9px}
+.kfaq-cat-m-ico svg{width:100%;height:100%;stroke-width:2.5}
+.kfaq-cat-m.kfaq-color-primary .kfaq-cat-m-ico,.kfaq-cat-m.kfaq-color-primary .kfaq-cat-m-label{color:var(--kfaq-primary)}
+.kfaq-cat-m.kfaq-color-secondary .kfaq-cat-m-ico,.kfaq-cat-m.kfaq-color-secondary .kfaq-cat-m-label{color:var(--kfaq-secondary)}
+.kfaq-cat-m-body{flex:1;min-width:0;text-align:left}
+.kfaq-cat-m-label{font-size:.88em;font-weight:900;letter-spacing:.06em;text-transform:uppercase;margin:0 0 3px}
+.kfaq-cat-m-preview{font-size:.71em;color:var(--kfaq-mute2);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4}
+.kfaq-cat-m-chev{width:16px;height:16px;flex-shrink:0;color:var(--kfaq-mute2)}
+
+/* No results */
+.kfaq-noresults{padding:60px 0;text-align:center;display:none}
+.kfaq-noresults.is-on{display:block}
+.kfaq-noresults p{font-weight:700;color:var(--kfaq-text);margin-bottom:6px}
+.kfaq-noresults small{display:block;font-size:.85em;color:var(--kfaq-mute2);margin-bottom:16px}
+.kfaq-noresults button{background:var(--kfaq-primary);color:#fff;font-size:.75em;font-weight:700;padding:10px 20px;border-radius:6px;border:none;cursor:pointer;font-family:inherit}
+
+/* ── Need more help ── */
+.kfaq-nmh-wrap{padding:36px 0}
+.kfaq-nmh-head{text-align:center;margin-bottom:20px}
+.kfaq-nmh-head h2{font-size:1.5em;font-weight:800;color:var(--kfaq-text);margin:0 0 6px}
+.kfaq-nmh-head p{font-size:.85em;color:var(--kfaq-muted);margin:0}
+.kfaq-nmh-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:768px){.kfaq-nmh-grid{grid-template-columns:repeat(4,1fr);gap:16px}}
+.kfaq-nmh-card{display:flex;flex-direction:column;gap:8px;background:#fff;border:1px solid var(--kfaq-border);border-radius:10px;padding:14px 12px;box-shadow:0 1px 3px rgba(0,0,0,.04);cursor:pointer}
+@media(min-width:768px){.kfaq-nmh-card{flex-direction:row;align-items:center;gap:12px}}
+.kfaq-list .kfaq-nmh-ico{width:36px !important;height:36px !important;min-width:36px !important;border-radius:50% !important;background:#C41818 !important;background-color:#C41818 !important;flex-shrink:0 !important;display:flex !important;align-items:center !important;justify-content:center !important;color:#fff !important;visibility:visible !important;opacity:1 !important;overflow:visible !important}
+.kfaq-list .kfaq-nmh-ico svg{display:block !important;visibility:visible !important;opacity:1 !important;width:18px !important;height:18px !important;max-width:18px !important;max-height:18px !important;stroke:#fff !important;color:#fff !important;fill:none !important;overflow:visible !important}
+.kfaq-list .kfaq-nmh-ico svg[fill="#fff"]{fill:#fff !important;stroke:none !important}
+.kfaq-list .kfaq-nmh-ico svg path{stroke:#fff !important}
+.kfaq-list .kfaq-nmh-ico svg[fill="#fff"] path{fill:#fff !important;stroke:none !important}
+@media(min-width:768px){.kfaq-list .kfaq-nmh-ico{width:44px !important;height:44px !important;min-width:44px !important}.kfaq-list .kfaq-nmh-ico svg{width:22px !important;height:22px !important;max-width:22px !important;max-height:22px !important}}
+.kfaq-nmh-body{flex:1;min-width:0}
+.kfaq-nmh-lead{font-size:.62em;color:var(--kfaq-mute2);margin:0 0 2px;font-weight:500}
+.kfaq-nmh-val{font-size:.85em;font-weight:800;color:var(--kfaq-text);margin:0 0 2px}
+.kfaq-nmh-fine{font-size:.62em;color:var(--kfaq-mute2);margin:0}
+.kfaq-nmh-card a.kfaq-nmh-cta{font-size:.68em;font-weight:700;color:var(--kfaq-secondary)}
+
+/* ── Trust bar ── */
+.kfaq-trust-wrap{padding:0 0 24px}
+.kfaq-trust-inner{background:#fff;padding:20px}
+.kfaq-trust-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px 12px}
+@media(min-width:640px){.kfaq-trust-grid{grid-template-columns:repeat(4,1fr)}}
+.kfaq-trust-item{display:flex;align-items:center;gap:10px}
+.kfaq-trust-ico{flex-shrink:0;color:var(--kfaq-text);width:30px;height:30px}
+.kfaq-trust-ico svg{width:100%;height:100%}
+.kfaq-trust-title{font-size:.62em;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--kfaq-text);margin:0 0 2px}
+.kfaq-trust-sub{font-size:.62em;color:var(--kfaq-mute2);margin:0}
+
+/* ── Modal (native <dialog>) ── */
+.kfaq-modal{padding:0;border:none;border-radius:14px;width:100%;max-width:640px;max-height:85vh;background:#fff;box-shadow:0 20px 60px -10px rgba(0,0,0,.3);<?php if ($fontStack !== ''): ?>font-family:<?= /* @noEscape */ $fontStack ?>;<?php endif; ?>color:var(--kfaq-text)}
+.kfaq-modal::backdrop{background:rgba(14,16,37,.55)}
+.kfaq-modal-card{display:flex;flex-direction:column;max-height:85vh}
+.kfaq-modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--kfaq-border);flex-shrink:0}
+.kfaq-modal-head h3{font-size:1.05em;font-weight:800;color:var(--kfaq-text);margin:0}
+.kfaq-modal-close{background:none;border:none;cursor:pointer;color:var(--kfaq-muted);padding:4px;border-radius:6px;line-height:0;font-family:inherit}
+.kfaq-modal-body{overflow-y:auto;overflow-x:hidden;padding:6px 22px 22px;scrollbar-width:thin;scrollbar-color:var(--kfaq-primary) #f3f4f6}
+.kfaq-modal-body::-webkit-scrollbar{width:8px}
+.kfaq-modal-body::-webkit-scrollbar-track{background:#f3f4f6;border-radius:4px}
+.kfaq-modal-body::-webkit-scrollbar-thumb{background:var(--kfaq-primary);border-radius:4px;border:1.5px solid #f3f4f6}
+.kfaq-modal-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid #f3f4f6;color:inherit;transition:color .15s}
+.kfaq-modal-row:last-child{border-bottom:none}
+.kfaq-modal-row .q{font-size:.92em;font-weight:700;color:#374151;line-height:1.4;transition:color .15s}
+.kfaq-modal-row:hover .q{color:var(--kfaq-secondary)}
+.kfaq-modal-row .arr{flex-shrink:0;color:var(--kfaq-mute2);transition:color .15s,transform .15s}
+.kfaq-modal-row:hover .arr{color:var(--kfaq-secondary);transform:translateX(2px)}
+</style>
+
+<div class="kfaq-list" data-kfaq-listing>
+
+    <?php if ($enableSearch): ?>
+    <div class="kfaq-msearch kfaq-mobile-only">
+        <form class="kfaq-msearch-inner" method="get" action="<?= $escaper->escapeUrl($block->getUrl('faqs')) ?>" role="search" data-kfaq-form>
+            <div class="kfaq-msearch-input">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                </svg>
+                <input type="search" name="kfaq_q" data-kfaq-search placeholder="<?= $escaper->escapeHtmlAttr(__('Search help articles…')) ?>" autocomplete="off">
+            </div>
+            <button type="submit" class="kfaq-msearch-go"><?= $escaper->escapeHtml(__('Search')) ?></button>
+        </form>
+        <?php if ($ajaxSearchOn): ?><div class="kfaq-suggest" data-kfaq-suggest></div><?php endif; ?>
+    </div>
+    <?php endif; ?>
+
+    <!-- Hero -->
+    <?php if ($heroOn): ?>
+    <div class="kfaq-hero-wrap">
+        <div class="kfaq-shell">
+            <div class="kfaq-desktop-only">
+                <div class="kfaq-hero">
+                    <?php if ($heroImage): ?>
+                        <img src="<?= $escaper->escapeUrl($heroImage) ?>" alt="" loading="eager" fetchpriority="high" class="kfaq-hero-img">
+                    <?php else: ?>
+                        <div class="kfaq-hero-fallback"></div>
+                    <?php endif; ?>
+                    <div class="kfaq-hero-inner">
+                        <div class="kfaq-hero-card">
+                            <span class="kfaq-hero-eyebrow"><?= $escaper->escapeHtml(__('Help Centre')) ?></span>
+                            <?php if ($heroTitle !== ''): ?><h1><?= $escaper->escapeHtml($heroTitle) ?></h1><?php endif; ?>
+                            <?php if ($heroSubtitle !== ''): ?><p><?= $escaper->escapeHtml($heroSubtitle) ?></p><?php endif; ?>
+                            <?php if ($enableSearch): ?>
+                            <form class="kfaq-hero-search" method="get" action="<?= $escaper->escapeUrl($block->getUrl('faqs')) ?>" role="search" data-kfaq-form>
+                                <div class="kfaq-hero-search-input">
+                                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+                                    <input type="search" name="kfaq_q" data-kfaq-search placeholder="<?= $escaper->escapeHtmlAttr(__('Search help articles…')) ?>" autocomplete="off">
+                                </div>
+                                <button type="submit" class="kfaq-hero-search-go"><?= $escaper->escapeHtml(__('Search')) ?></button>
+                                <?php if ($ajaxSearchOn): ?><div class="kfaq-suggest" data-kfaq-suggest></div><?php endif; ?>
+                            </form>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="kfaq-mobile-only">
+                <div class="kfaq-hero-m">
+                    <?php if ($heroImage): ?>
+                        <img src="<?= $escaper->escapeUrl($heroImage) ?>" alt="" loading="eager" class="kfaq-hero-img">
+                    <?php else: ?>
+                        <div class="kfaq-hero-fallback"></div>
+                    <?php endif; ?>
+                    <div class="kfaq-hero-m-overlay"></div>
+                    <div class="kfaq-hero-m-inner">
+                        <div class="kfaq-hero-m-card">
+                            <span class="kfaq-hero-m-eyebrow"><?= $escaper->escapeHtml(__('Help Centre')) ?></span>
+                            <?php if ($heroTitle !== ''): ?><h1><?= $escaper->escapeHtml($heroTitle) ?></h1><?php endif; ?>
+                            <?php if ($heroSubtitle !== ''): ?><p><?= $escaper->escapeHtml($heroSubtitle) ?></p><?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($featuredOn && !empty($featured)):
+        // Index categories by id for label lookup
+        $catIndex = [];
+        foreach ($cats as $c) {
+            $catIndex[(int) $c->getData('category_id')] = $c;
+        }
+    ?>
+    <!-- Featured strip -->
+    <div class="kfaq-featured-wrap">
+        <div class="kfaq-shell">
+            <div class="kfaq-featured-head">
+                <span class="kfaq-featured-eyebrow"><?= $escaper->escapeHtml(__('Popular questions')) ?></span>
+                <h2><?= $escaper->escapeHtml(__('Featured FAQs')) ?></h2>
+            </div>
+            <div class="kfaq-featured-grid">
+                <?php foreach ($featured as $f):
+                    $fCat = $catIndex[(int) $f->getCategoryId()] ?? null;
+                    if (!$fCat) { continue; }
+                    $fSlug = (string) ($f->getData('url_key') ?? '');
+                    if ($fSlug === '') { continue; }
+                    $fUrl  = $block->getDetailUrl((string) $fCat->getData('identifier'), $fSlug);
+                ?>
+                    <a class="kfaq-featured-card" href="<?= $escaper->escapeUrl($fUrl) ?>">
+                        <span class="kfaq-featured-badge"><?= $escaper->escapeHtml($fCat->getData('label')) ?></span>
+                        <p class="kfaq-featured-q"><?= $escaper->escapeHtml($f->getQuestion()) ?></p>
+                        <span class="kfaq-featured-arrow">
+                            <?= $escaper->escapeHtml(__('Read')) ?>
+                            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                        </span>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Categories -->
+    <div class="kfaq-cats">
+        <div class="kfaq-shell kfaq-cats-inner">
+
+            <!-- Desktop grid -->
+            <div class="kfaq-desktop-only">
+                <div class="kfaq-cats-grid-wrap">
+                    <div class="kfaq-cats-grid">
+                        <?php foreach ($cats as $idx => $cat):
+                            $cIdent    = (string) $cat->getData('identifier');
+                            $cLabel    = (string) $cat->getData('label');
+                            $cIconKey  = (string) $cat->getData('icon_key');
+                            $cIcon     = $renderCatIcon($cat);
+                            $colorMod  = $idx % 2 === 0 ? 'kfaq-color-primary' : 'kfaq-color-secondary';
+                            $cItems    = method_exists($cat, 'getItems') ? ($cat->getItems() ?? []) : [];
+                            $first4    = array_slice($cItems, 0, 4);
+                        ?>
+                        <div id="<?= $escaper->escapeHtmlAttr($cIdent) ?>"
+                             class="kfaq-cat-card <?= $colorMod ?>"
+                             data-cat-id="<?= $escaper->escapeHtmlAttr($cIdent) ?>">
+                            <div class="kfaq-cat-head" style="cursor:default">
+                                <span class="kfaq-cat-ico"><?= /* @noEscape */ $cIcon ?></span>
+                                <span class="kfaq-cat-label"><?= $escaper->escapeHtml($cLabel) ?></span>
+                            </div>
+                            <ul class="kfaq-cat-list">
+                                <?php foreach ($first4 as $qIdx => $faq):
+                                    $slug = (string) ($faq->getData('url_key') ?? '');
+                                    $href = $slug !== '' ? $block->getDetailUrl($cIdent, $slug) : null;
+                                ?>
+                                <li data-q-idx="<?= (int) $qIdx ?>">
+                                    <?php if ($href): ?>
+                                        <a class="kfaq-q-link" href="<?= $escaper->escapeUrl($href) ?>">
+                                            <span class="kfaq-q-text"><?= $escaper->escapeHtml($faq->getQuestion()) ?></span>
+                                            <svg class="kfaq-q-arrow" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="kfaq-q-link"><span class="kfaq-q-text"><?= $escaper->escapeHtml($faq->getQuestion()) ?></span></span>
+                                    <?php endif; ?>
+                                </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile list -->
+            <div class="kfaq-mobile-only">
+                <div class="kfaq-cats-m">
+                    <?php foreach ($cats as $idx => $cat):
+                        $cIdent    = (string) $cat->getData('identifier');
+                        $cLabel    = (string) $cat->getData('label');
+                        $cIconKey  = (string) $cat->getData('icon_key');
+                        $cIcon     = $icons[$cIconKey] ?? $icons['support'];
+                        $colorMod  = $idx % 2 === 0 ? 'kfaq-color-primary' : 'kfaq-color-secondary';
+                        $cItems    = method_exists($cat, 'getItems') ? ($cat->getItems() ?? []) : [];
+                        $preview   = '';
+                        if (!empty($cItems[0])) {
+                            $preview = (string) $cItems[0]->getQuestion();
+                            if (!empty($cItems[1])) {
+                                $preview .= ' · ' . (string) $cItems[1]->getQuestion();
+                            }
+                        }
+                    ?>
+                    <div class="kfaq-cat-m <?= $colorMod ?>" data-cat-id="<?= $escaper->escapeHtmlAttr($cIdent) ?>">
+                        <div class="kfaq-cat-m-head">
+                            <div class="kfaq-cat-m-ico"><?= /* @noEscape */ $cIcon ?></div>
+                            <div class="kfaq-cat-m-body">
+                                <p class="kfaq-cat-m-label"><?= $escaper->escapeHtml($cLabel) ?></p>
+                            </div>
+                        </div>
+                        <ul class="kfaq-cat-m-list">
+                            <?php foreach (array_slice($cItems, 0, 4) as $qIdx => $faq):
+                                $slug = (string) ($faq->getData('url_key') ?? '');
+                                $href = $slug !== '' ? $block->getDetailUrl($cIdent, $slug) : null;
+                            ?>
+                            <li data-q-idx="<?= (int) $qIdx ?>">
+                                <?php if ($href): ?>
+                                    <a class="kfaq-q-link" href="<?= $escaper->escapeUrl($href) ?>">
+                                        <span class="kfaq-q-text"><?= $escaper->escapeHtml($faq->getQuestion()) ?></span>
+                                        <svg class="kfaq-q-arrow" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                                    </a>
+                                <?php else: ?>
+                                    <span class="kfaq-q-link"><span class="kfaq-q-text"><?= $escaper->escapeHtml($faq->getQuestion()) ?></span></span>
+                                <?php endif; ?>
+                            </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <!-- No results -->
+            <div class="kfaq-noresults" data-kfaq-noresults>
+                <p><?= $escaper->escapeHtml(__('No results found')) ?></p>
+                <small><?= $escaper->escapeHtml(__('Try different keywords.')) ?></small>
+                <button type="button" data-kfaq-clear><?= $escaper->escapeHtml(__('Clear Search')) ?></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Visitor submission form (Stores → Config → EtechFlow → FAQ → Features → Enable visitor submissions) -->
+    <?php if ($submissionsOn): ?>
+    <div class="kfaq-submit-wrap">
+        <div class="kfaq-shell">
+            <div class="kfaq-submit-card">
+                <h2><?= $escaper->escapeHtml(__('Can\'t find what you\'re looking for?')) ?></h2>
+                <p class="kfaq-submit-lead"><?= $escaper->escapeHtml(__('Ask your own question — our team will review and add it to the FAQs.')) ?></p>
+                <form class="kfaq-submit-form" data-kfaq-submit-form>
+                    <div class="kfaq-submit-row">
+                        <label>
+                            <span><?= $escaper->escapeHtml(__('Your question')) ?> <span style="color:var(--kfaq-primary)">*</span></span>
+                            <textarea name="question" rows="3" maxlength="1000" required placeholder="<?= $escaper->escapeHtmlAttr(__('e.g. Do you ship to Ireland?')) ?>"></textarea>
+                        </label>
+                    </div>
+                    <div class="kfaq-submit-grid">
+                        <label>
+                            <span><?= $escaper->escapeHtml(__('Your name (optional)')) ?></span>
+                            <input type="text" name="name" maxlength="120">
+                        </label>
+                        <label>
+                            <span><?= $escaper->escapeHtml(__('Your email (optional)')) ?></span>
+                            <input type="email" name="email" maxlength="160">
+                        </label>
+                        <label>
+                            <span><?= $escaper->escapeHtml(__('Category (optional)')) ?></span>
+                            <select name="category_id">
+                                <option value="">— <?= $escaper->escapeHtml(__('Suggest one')) ?> —</option>
+                                <?php foreach ($cats as $c): ?>
+                                    <option value="<?= (int) $c->getData('category_id') ?>"><?= $escaper->escapeHtml($c->getData('label')) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                    </div>
+                    <!-- Honeypot: visible to bots, hidden from humans. Must be empty for the submission to be accepted. -->
+                    <label style="position:absolute;left:-9999px;top:-9999px" aria-hidden="true">
+                        Website <input type="text" name="website" tabindex="-1" autocomplete="off">
+                    </label>
+                    <div class="kfaq-submit-actions">
+                        <button type="submit" class="kfaq-submit-btn"><?= $escaper->escapeHtml(__('Submit Question')) ?></button>
+                        <span class="kfaq-submit-msg" data-kfaq-submit-msg></span>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <style>
+    .kfaq-submit-wrap{padding:30px 0}
+    .kfaq-submit-card{background:#fff;border:1px solid var(--kfaq-border);border-radius:14px;padding:24px 28px;max-width:780px;margin:0 auto}
+    .kfaq-submit-card h2{font-size:1.25em;font-weight:900;color:var(--kfaq-text);margin:0 0 6px;letter-spacing:-.005em}
+    .kfaq-submit-lead{font-size:.88em;color:var(--kfaq-muted);margin:0 0 18px;line-height:1.55}
+    .kfaq-submit-form{display:flex;flex-direction:column;gap:14px;position:relative}
+    .kfaq-submit-row label,.kfaq-submit-grid label{display:flex;flex-direction:column;gap:4px;font-size:.78em;font-weight:700;color:var(--kfaq-text)}
+    .kfaq-submit-row textarea,.kfaq-submit-grid input,.kfaq-submit-grid select{padding:9px 12px;border:1px solid var(--kfaq-border);border-radius:8px;font-size:.88em;font-weight:400;color:var(--kfaq-text);background:#fff;outline:none;font-family:inherit;transition:border-color .15s}
+    .kfaq-submit-row textarea:focus,.kfaq-submit-grid input:focus,.kfaq-submit-grid select:focus{border-color:var(--kfaq-secondary)}
+    .kfaq-submit-row textarea{resize:vertical;min-height:80px}
+    .kfaq-submit-grid{display:grid;grid-template-columns:1fr;gap:14px}
+    @media(min-width:640px){.kfaq-submit-grid{grid-template-columns:repeat(3,1fr)}}
+    .kfaq-submit-actions{display:flex;align-items:center;gap:14px;margin-top:6px}
+    .kfaq-list .kfaq-submit-btn,
+    .kfaq-list button.kfaq-submit-btn,
+    .kfaq-list .kfaq-submit-form button[type="submit"]{display:inline-block !important;visibility:visible !important;opacity:1 !important;padding:12px 24px !important;background:#C41818 !important;background-color:#C41818 !important;color:#ffffff !important;font-weight:800 !important;font-size:.85em !important;border:0 !important;border-radius:8px !important;cursor:pointer !important;letter-spacing:.04em !important;text-transform:uppercase !important;font-family:inherit !important;line-height:1.2 !important;height:auto !important;width:auto !important;min-width:170px !important;max-width:none !important;text-decoration:none !important;box-shadow:none !important;transform:none !important;position:static !important;float:none !important;clip:auto !important;clip-path:none !important;transition:filter .15s}
+    .kfaq-submit-btn:hover{filter:brightness(.92) !important}
+    .kfaq-submit-btn[disabled]{opacity:.6 !important;cursor:not-allowed !important}
+    .kfaq-submit-msg{font-size:.8em;font-weight:600}
+    .kfaq-submit-msg.is-ok{color:#16a34a}
+    .kfaq-submit-msg.is-err{color:var(--kfaq-primary)}
+    </style>
+    <script>
+    (function () {
+        var f = document.querySelector('[data-kfaq-submit-form]');
+        if (!f) return;
+        var msg = f.querySelector('[data-kfaq-submit-msg]');
+        var btn = f.querySelector('.kfaq-submit-btn');
+        var endpoint = <?= json_encode($block->getSubmitEndpoint()) ?>;
+        f.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (btn.hasAttribute('disabled')) return;
+            btn.setAttribute('disabled','disabled');
+            msg.textContent = '';
+            msg.className = 'kfaq-submit-msg';
+            var fd = new FormData(f);
+            fetch(endpoint, { method:'POST', body: fd, credentials:'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (j) {
+                    if (j && j.ok) {
+                        msg.textContent = j.message || 'Thanks!';
+                        msg.classList.add('is-ok');
+                        f.reset();
+                    } else {
+                        msg.textContent = (j && j.message) || 'Could not submit. Please try again.';
+                        msg.classList.add('is-err');
+                    }
+                })
+                .catch(function () {
+                    msg.textContent = 'Network error. Please try again.';
+                    msg.classList.add('is-err');
+                })
+                .finally(function () {
+                    btn.removeAttribute('disabled');
+                });
+        });
+    })();
+    </script>
+    <?php endif; ?>
+
+    <!-- Need more help (config-driven) -->
+    <?php if ($nmhOn && ($phone || $email || $contactFormUrl || $storeFinderUrl)): ?>
+    <div class="kfaq-nmh-wrap">
+        <div class="kfaq-shell">
+            <div class="kfaq-nmh-head">
+                <h2><?= $escaper->escapeHtml(__('Need more help?')) ?></h2>
+                <p><?= $escaper->escapeHtml(__('Our friendly team is here to help you with any questions or concerns.')) ?></p>
+            </div>
+            <div class="kfaq-nmh-grid">
+
+                <?php if ($phone): ?>
+                <a href="tel:<?= $escaper->escapeHtmlAttr(preg_replace('/\\s+/', '', $phone)) ?>" class="kfaq-nmh-card">
+                    <div class="kfaq-nmh-ico"><?= /* @noEscape */ ($nmhIcons[$phoneIconKey] ?? $nmhIcons['phone']) ?></div>
+                    <div class="kfaq-nmh-body">
+                        <p class="kfaq-nmh-lead"><?= $escaper->escapeHtml(__('Call Us')) ?></p>
+                        <p class="kfaq-nmh-val"><?= $escaper->escapeHtml($phone) ?></p>
+                        <?php if ($phoneHours): ?><p class="kfaq-nmh-fine"><?= $escaper->escapeHtml($phoneHours) ?></p><?php endif; ?>
+                    </div>
+                </a>
+                <?php endif; ?>
+
+                <?php if ($email): ?>
+                <a href="mailto:<?= $escaper->escapeHtmlAttr($email) ?>" class="kfaq-nmh-card">
+                    <div class="kfaq-nmh-ico"><?= /* @noEscape */ ($nmhIcons[$emailIconKey] ?? $nmhIcons['email']) ?></div>
+                    <div class="kfaq-nmh-body">
+                        <p class="kfaq-nmh-lead"><?= $escaper->escapeHtml(__('Email Us')) ?></p>
+                        <p class="kfaq-nmh-val" style="word-break:break-all"><?= $escaper->escapeHtml($email) ?></p>
+                        <?php if ($emailLead): ?><p class="kfaq-nmh-fine"><?= $escaper->escapeHtml($emailLead) ?></p><?php endif; ?>
+                    </div>
+                </a>
+                <?php endif; ?>
+
+                <?php if ($contactFormUrl):
+                    $cUrl = preg_match('#^https?://#', $contactFormUrl) ? $contactFormUrl : $block->getUrl($contactFormUrl);
+                ?>
+                <a href="<?= $escaper->escapeUrl($cUrl) ?>" class="kfaq-nmh-card">
+                    <div class="kfaq-nmh-ico"><?= /* @noEscape */ ($nmhIcons[$contactFormIconKey] ?? $nmhIcons['chat']) ?></div>
+                    <div class="kfaq-nmh-body">
+                        <p class="kfaq-nmh-lead"><?= $escaper->escapeHtml(__('Contact')) ?></p>
+                        <p class="kfaq-nmh-val"><?= $escaper->escapeHtml(__('Open contact page')) ?></p>
+                    </div>
+                </a>
+                <?php endif; ?>
+
+                <?php if ($storeFinderUrl):
+                    $sUrl = preg_match('#^https?://#', $storeFinderUrl) ? $storeFinderUrl : $block->getUrl($storeFinderUrl);
+                ?>
+                <a href="<?= $escaper->escapeUrl($sUrl) ?>" class="kfaq-nmh-card">
+                    <div class="kfaq-nmh-ico"><?= /* @noEscape */ ($nmhIcons[$storeFinderIconKey] ?? $nmhIcons['map-pin']) ?></div>
+                    <div class="kfaq-nmh-body">
+                        <p class="kfaq-nmh-lead"><?= $escaper->escapeHtml(__('Visit Our Store')) ?></p>
+                        <p class="kfaq-nmh-val"><?= $escaper->escapeHtml(__('Find Your Nearest Store')) ?></p>
+                        <span class="kfaq-nmh-cta"><?= $escaper->escapeHtml(__('Store Finder')) ?> &rsaquo;</span>
+                    </div>
+                </a>
+                <?php endif; ?>
+
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Trust bar -->
+    <?php if ($trustBarOn): ?>
+    <div class="kfaq-trust-wrap">
+        <div class="kfaq-shell">
+            <div class="kfaq-trust-inner">
+                <div class="kfaq-trust-grid">
+                    <div class="kfaq-trust-item">
+                        <div class="kfaq-trust-ico"><?= /* @noEscape */ $icons['delivery'] ?></div>
+                        <div>
+                            <p class="kfaq-trust-title"><?= $escaper->escapeHtml(__('Fast Delivery')) ?></p>
+                            <p class="kfaq-trust-sub"><?= $escaper->escapeHtml(__('Next day delivery available')) ?></p>
+                        </div>
+                    </div>
+                    <div class="kfaq-trust-item">
+                        <div class="kfaq-trust-ico"><?= /* @noEscape */ $icons['support'] ?></div>
+                        <div>
+                            <p class="kfaq-trust-title"><?= $escaper->escapeHtml(__('Expert Support')) ?></p>
+                            <p class="kfaq-trust-sub"><?= $escaper->escapeHtml(__('Friendly & professional advice')) ?></p>
+                        </div>
+                    </div>
+                    <div class="kfaq-trust-item">
+                        <div class="kfaq-trust-ico"><?= /* @noEscape */ $icons['payment'] ?></div>
+                        <div>
+                            <p class="kfaq-trust-title"><?= $escaper->escapeHtml(__('Secure Payment')) ?></p>
+                            <p class="kfaq-trust-sub"><?= $escaper->escapeHtml(__('100% secure checkout')) ?></p>
+                        </div>
+                    </div>
+                    <div class="kfaq-trust-item">
+                        <div class="kfaq-trust-ico"><?= /* @noEscape */ $icons['account'] ?></div>
+                        <div>
+                            <p class="kfaq-trust-title"><?= $escaper->escapeHtml(__('Quality Guarantee')) ?></p>
+                            <p class="kfaq-trust-sub"><?= $escaper->escapeHtml(__('Trusted by professionals')) ?></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Modal -->
+    <dialog class="kfaq-modal" data-kfaq-modal>
+        <div class="kfaq-modal-card">
+            <div class="kfaq-modal-head">
+                <h3 data-kfaq-modal-title></h3>
+                <button type="button" class="kfaq-modal-close" data-kfaq-modal-close aria-label="<?= $escaper->escapeHtmlAttr(__('Close')) ?>">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="kfaq-modal-body" data-kfaq-modal-body></div>
+        </div>
+    </dialog>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    var root = document.querySelector('[data-kfaq-listing]');
+    if (!root) { return; }
+    var allCats = <?= /* @noEscape */ $catsJson ?: '[]' ?>;
+    var detailUrlPrefix = <?= json_encode(rtrim($block->getDetailUrl('PLACEHOLDER_CAT', 'PLACEHOLDER_SLUG'), 'PLACEHOLDER_SLUG')) ?>;
+    // detailUrlPrefix now ends in "PLACEHOLDER_CAT/" — we'll string-replace at runtime
+
+    // ---- Search filter ----
+    var searchInputs = root.querySelectorAll('[data-kfaq-search]');
+    var noResults    = root.querySelector('[data-kfaq-noresults]');
+    var clearBtn     = root.querySelector('[data-kfaq-clear]');
+
+    function applyFilter(term) {
+        term = (term || '').trim().toLowerCase();
+        var visibleCount = 0;
+        // sync the value across desktop + mobile inputs
+        searchInputs.forEach(function (i) { if (i.value !== term) { i.value = term; } });
+        // each category card (desktop + mobile)
+        root.querySelectorAll('[data-cat-id]').forEach(function (card) {
+            var catId = card.getAttribute('data-cat-id');
+            var cat = allCats.find(function (c) { return c.id === catId; });
+            if (!cat) { return; }
+            var match = !term || cat.faqs.some(function (f) {
+                return f.q.toLowerCase().indexOf(term) >= 0 || (f.a || '').toLowerCase().indexOf(term) >= 0;
+            });
+            card.classList.toggle('is-hidden', !match);
+            if (match) { visibleCount++; }
+            // hide individual question rows that don't match (desktop card only)
+            card.querySelectorAll('li[data-q-idx]').forEach(function (li) {
+                var idx = parseInt(li.getAttribute('data-q-idx'), 10);
+                var f = cat.faqs[idx];
+                var visible = !term || (f && (f.q.toLowerCase().indexOf(term) >= 0 || (f.a || '').toLowerCase().indexOf(term) >= 0));
+                li.classList.toggle('is-hidden', !visible);
+            });
+        });
+        if (noResults) { noResults.classList.toggle('is-on', term !== '' && visibleCount === 0); }
+    }
+
+    searchInputs.forEach(function (input) {
+        // Stop keystrokes bubbling up to the theme's header search listeners
+        input.addEventListener('keydown',  function (e) { e.stopPropagation(); });
+        input.addEventListener('keyup',    function (e) { e.stopPropagation(); });
+        input.addEventListener('keypress', function (e) { e.stopPropagation(); });
+        input.addEventListener('input',    function (e) { e.stopPropagation(); applyFilter(input.value); });
+        input.addEventListener('focus',    function (e) { e.stopPropagation(); });
+        input.addEventListener('click',    function (e) { e.stopPropagation(); });
+    });
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function () { applyFilter(''); });
+    }
+
+    // ---- Modal (all questions per category) ----
+    var dialog    = root.querySelector('[data-kfaq-modal]');
+    var dlgTitle  = root.querySelector('[data-kfaq-modal-title]');
+    var dlgBody   = root.querySelector('[data-kfaq-modal-body]');
+    var dlgClose  = root.querySelector('[data-kfaq-modal-close]');
+    var supportsDialog = dialog && typeof dialog.showModal === 'function';
+
+    function openModal(catId) {
+        var cat = allCats.find(function (c) { return c.id === catId; });
+        if (!cat || !dialog) { return; }
+        dlgTitle.textContent = cat.label;
+        dlgBody.innerHTML = '';
+        cat.faqs.forEach(function (f) {
+            var a = document.createElement('a');
+            a.className = 'kfaq-modal-row';
+            a.href = f.slug ? detailUrlPrefix.replace('PLACEHOLDER_CAT/', catId + '/') + f.slug : '#';
+            var q = document.createElement('span');
+            q.className = 'q';
+            q.textContent = f.q;
+            var arr = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            arr.setAttribute('class', 'arr');
+            arr.setAttribute('width', '15');
+            arr.setAttribute('height', '15');
+            arr.setAttribute('fill', 'none');
+            arr.setAttribute('stroke', 'currentColor');
+            arr.setAttribute('stroke-width', '2.5');
+            arr.setAttribute('viewBox', '0 0 24 24');
+            arr.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>';
+            a.appendChild(q);
+            a.appendChild(arr);
+            dlgBody.appendChild(a);
+        });
+        if (supportsDialog) {
+            dialog.showModal();
+        } else {
+            // Fallback for browsers without <dialog>: redirect to first question
+            if (cat.faqs[0] && cat.faqs[0].slug) {
+                window.location.href = detailUrlPrefix.replace('PLACEHOLDER_CAT/', catId + '/') + cat.faqs[0].slug;
+            }
+        }
+    }
+    function closeModal() {
+        if (dialog && supportsDialog && dialog.open) { dialog.close(); }
+    }
+
+    root.querySelectorAll('[data-kfaq-open-modal]').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            openModal(btn.getAttribute('data-kfaq-open-modal'));
+        });
+    });
+    if (dlgClose) { dlgClose.addEventListener('click', closeModal); }
+    if (dialog) {
+        // Click outside the card closes the dialog
+        dialog.addEventListener('click', function (e) {
+            var rect = dialog.getBoundingClientRect();
+            var inDialog = (rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
+                            rect.left <= e.clientX && e.clientX <= rect.left + rect.width);
+            if (!inDialog) { closeModal(); }
+        });
+    }
+
+    // ---- Translate kfaq_q → q on submit so the URL stays /faqs?q=... ----
+    root.querySelectorAll('form[data-kfaq-form]').forEach(function (f) {
+        f.addEventListener('submit', function (e) {
+            var inp = f.querySelector('input[name="kfaq_q"]');
+            if (!inp) { return; }
+            e.preventDefault();
+            var v = (inp.value || '').trim();
+            var url = f.getAttribute('action') || window.location.pathname;
+            if (v) { url += (url.indexOf('?') >= 0 ? '&' : '?') + 'q=' + encodeURIComponent(v); }
+            window.location.href = url;
+        });
+    });
+
+    // ---- Read ?q=… from URL for deep links ----
+    try {
+        var params = new URLSearchParams(window.location.search);
+        var q = params.get('q');
+        if (q) { applyFilter(q); }
+    } catch (e) { /* IE / older: silent */ }
+
+    // ---- AJAX search suggestions ----
+    var searchUrl = <?= json_encode($searchUrl) ?>;
+    var ajaxOn    = <?= $ajaxSearchOn ? 'true' : 'false' ?>;
+    if (ajaxOn && searchUrl) {
+        var suggestBoxes = root.querySelectorAll('[data-kfaq-suggest]');
+        var debounceTimer = null;
+        var lastQuery = '';
+
+        function renderSuggest(box, items) {
+            if (!items.length) {
+                box.innerHTML = '<div class="none">No matches found.</div>';
+                box.classList.add('is-on');
+                return;
+            }
+            box.innerHTML = items.map(function (i) {
+                return '<a href="' + i.url + '"><span class="q"></span><span class="cat"></span></a>';
+            }).join('');
+            // Safely set text content (avoid XSS)
+            box.querySelectorAll('a').forEach(function (a, idx) {
+                a.querySelector('.q').textContent   = items[idx].question || '';
+                a.querySelector('.cat').textContent = items[idx].category || '';
+            });
+            box.classList.add('is-on');
+        }
+        function hideSuggest(box) {
+            box.classList.remove('is-on');
+            box.innerHTML = '';
+        }
+
+        searchInputs.forEach(function (input) {
+            var box = input.closest('.kfaq-msearch-inner, .kfaq-hero-search-input, .kfaq-hero-search, .kfaq-msearch')?.querySelector('[data-kfaq-suggest]');
+            if (!box) {
+                // Walk parents to find sibling .kfaq-suggest
+                var p = input.parentNode;
+                while (p && p !== root) { var s = p.querySelector('[data-kfaq-suggest]'); if (s) { box = s; break; } p = p.parentNode; }
+            }
+            if (!box) { return; }
+            input.addEventListener('input', function (e) {
+                e.stopPropagation();
+                var q = input.value.trim();
+                if (debounceTimer) { clearTimeout(debounceTimer); }
+                if (q.length < 2) { hideSuggest(box); return; }
+                if (q === lastQuery) { return; }
+                lastQuery = q;
+                debounceTimer = setTimeout(function () {
+                    fetch(searchUrl + '?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+                        .then(function (r) { return r.json(); })
+                        .then(function (j) { renderSuggest(box, (j && j.results) || []); })
+                        .catch(function () { hideSuggest(box); });
+                }, 220);
+            });
+            input.addEventListener('blur', function () {
+                // Delay so clicking on a result still fires
+                setTimeout(function () { hideSuggest(box); }, 200);
+            });
+        });
+    }
+})();
+</script>

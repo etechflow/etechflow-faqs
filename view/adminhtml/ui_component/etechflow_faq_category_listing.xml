@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<listing xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
+
+    <argument name="data" xsi:type="array">
+        <item name="js_config" xsi:type="array">
+            <item name="provider" xsi:type="string">etechflow_faq_category_listing.etechflow_faq_category_listing_data_source</item>
+        </item>
+    </argument>
+
+    <settings>
+        <buttons>
+            <button name="add">
+                <url path="*/*/new"/>
+                <class>primary</class>
+                <label translate="true">Add New Category</label>
+            </button>
+        </buttons>
+        <spinner>etechflow_faq_category_columns</spinner>
+        <deps>
+            <dep>etechflow_faq_category_listing.etechflow_faq_category_listing_data_source</dep>
+        </deps>
+    </settings>
+
+    <dataSource name="etechflow_faq_category_listing_data_source" component="Magento_Ui/js/grid/provider">
+        <settings>
+            <storageConfig>
+                <param name="indexField" xsi:type="string">category_id</param>
+            </storageConfig>
+            <updateUrl path="mui/index/render"/>
+        </settings>
+        <aclResource>Etechflow_Faq::category</aclResource>
+        <dataProvider class="Etechflow\Faq\Ui\DataProvider\Category\ListingDataProvider"
+                      name="etechflow_faq_category_listing_data_source">
+            <settings>
+                <requestFieldName>id</requestFieldName>
+                <primaryFieldName>category_id</primaryFieldName>
+            </settings>
+        </dataProvider>
+    </dataSource>
+
+    <listingToolbar name="listing_top">
+        <settings>
+            <sticky>true</sticky>
+        </settings>
+        <bookmark name="bookmarks"/>
+        <columnsControls name="columns_controls"/>
+        <filterSearch name="fulltext"/>
+        <filters name="listing_filters"/>
+        <paging name="listing_paging"/>
+    </listingToolbar>
+
+    <columns name="etechflow_faq_category_columns">
+        <settings>
+            <editorConfig>
+                <param name="selectProvider" xsi:type="string">etechflow_faq_category_listing.etechflow_faq_category_listing.etechflow_faq_category_columns.ids</param>
+                <param name="enabled" xsi:type="boolean">true</param>
+                <param name="indexField" xsi:type="string">category_id</param>
+            </editorConfig>
+            <childDefaults>
+                <param name="fieldAction" xsi:type="array">
+                    <item name="provider" xsi:type="string">etechflow_faq_category_listing.etechflow_faq_category_listing.etechflow_faq_category_columns_editor</item>
+                    <item name="target" xsi:type="string">startEdit</item>
+                    <item name="params" xsi:type="array">
+                        <item name="0" xsi:type="string">${ $.$data.rowIndex }</item>
+                        <item name="1" xsi:type="boolean">true</item>
+                    </item>
+                </param>
+            </childDefaults>
+        </settings>
+
+        <selectionsColumn name="ids">
+            <settings>
+                <indexField>category_id</indexField>
+            </settings>
+        </selectionsColumn>
+
+        <column name="category_id">
+            <settings>
+                <filter>textRange</filter>
+                <label translate="true">ID</label>
+                <sorting>asc</sorting>
+            </settings>
+        </column>
+
+        <column name="label">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Category Label</label>
+            </settings>
+        </column>
+
+        <column name="identifier">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Identifier</label>
+            </settings>
+        </column>
+
+        <column name="icon_key">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Icon</label>
+            </settings>
+        </column>
+
+        <column name="sort_order">
+            <settings>
+                <filter>textRange</filter>
+                <label translate="true">Sort Order</label>
+            </settings>
+        </column>
+
+        <column name="faq_count">
+            <settings>
+                <label translate="true">FAQs</label>
+            </settings>
+        </column>
+
+        <column name="is_active" component="Magento_Ui/js/grid/columns/select">
+            <settings>
+                <options class="Etechflow\Faq\Model\Source\IsActive"/>
+                <filter>select</filter>
+                <dataType>select</dataType>
+                <label translate="true">Active</label>
+            </settings>
+        </column>
+
+        <actionsColumn name="actions" class="Etechflow\Faq\Ui\Component\Listing\Column\CategoryActions">
+            <settings>
+                <indexField>category_id</indexField>
+                <label translate="true">Actions</label>
+            </settings>
+        </actionsColumn>
+    </columns>
+</listing>

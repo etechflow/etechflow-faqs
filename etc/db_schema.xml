@@ -1,0 +1,148 @@
+<?xml version="1.0"?>
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+
+    <!-- ============================== CATEGORIES ============================== -->
+    <table name="etechflow_faq_category" resource="default" engine="innodb" charset="utf8mb4" collation="utf8mb4_general_ci" comment="EtechFlow FAQ Categories">
+        <column xsi:type="smallint" name="category_id" unsigned="true" nullable="false" identity="true" comment="Category ID"/>
+        <column xsi:type="varchar" name="identifier" nullable="false" length="100" comment="URL Identifier"/>
+        <column xsi:type="varchar" name="label" nullable="false" length="255" comment="Display Label"/>
+        <column xsi:type="varchar" name="icon_key" nullable="false" length="50" default="orders" comment="Icon Key (built-in SVG fallback)"/>
+        <column xsi:type="varchar" name="icon_image" nullable="true" length="255" comment="Uploaded icon image path (relative to media)"/>
+        <column xsi:type="smallint" name="sort_order" unsigned="true" nullable="false" default="0" comment="Sort Order"/>
+        <column xsi:type="smallint" name="is_active" unsigned="false" nullable="false" default="1" comment="Active"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="category_id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="KEYSTATION_FAQ_CATEGORY_IDENTIFIER">
+            <column name="identifier"/>
+        </constraint>
+    </table>
+
+    <!-- ============================== ITEMS ============================== -->
+    <table name="etechflow_faq_item" resource="default" engine="innodb" charset="utf8mb4" collation="utf8mb4_general_ci" comment="EtechFlow FAQ Items">
+        <column xsi:type="int" name="item_id" unsigned="true" nullable="false" identity="true" comment="Item ID"/>
+        <column xsi:type="smallint" name="category_id" unsigned="true" nullable="false" comment="Category ID"/>
+        <column xsi:type="varchar" name="url_key" nullable="true" length="150" comment="URL Key (slug, unique per category)"/>
+        <column xsi:type="varchar" name="question" nullable="false" length="1000" comment="Question"/>
+        <column xsi:type="varchar" name="subtitle" nullable="true" length="500" comment="Short subtitle shown below question"/>
+        <column xsi:type="text" name="answer" nullable="false" comment="Answer (rich HTML)"/>
+        <column xsi:type="varchar" name="meta_title" nullable="true" length="255" comment="SEO meta title"/>
+        <column xsi:type="varchar" name="meta_description" nullable="true" length="500" comment="SEO meta description"/>
+        <column xsi:type="smallint" name="sort_order" unsigned="true" nullable="false" default="0" comment="Sort Order"/>
+        <column xsi:type="smallint" name="is_active" unsigned="false" nullable="false" default="1" comment="Active"/>
+        <column xsi:type="smallint" name="is_featured" unsigned="false" nullable="false" default="0" comment="Pinned to top of category + listing hero strip"/>
+        <column xsi:type="int" name="helpful_count" unsigned="true" nullable="false" default="0" comment="Cached count of helpful votes"/>
+        <column xsi:type="int" name="unhelpful_count" unsigned="true" nullable="false" default="0" comment="Cached count of unhelpful votes"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="item_id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="KEYSTATION_FAQ_ITEM_CATEGORY_ID_URL_KEY">
+            <column name="category_id"/>
+            <column name="url_key"/>
+        </constraint>
+        <constraint xsi:type="foreign"
+                    referenceId="KEYSTATION_FAQ_ITEM_CTGR_ID_KEYSTATION_FAQ_CTGR_CTGR_ID"
+                    table="etechflow_faq_item"
+                    column="category_id"
+                    referenceTable="etechflow_faq_category"
+                    referenceColumn="category_id"
+                    onDelete="CASCADE"/>
+        <index referenceId="KEYSTATION_FAQ_ITEM_CATEGORY_ID" indexType="btree">
+            <column name="category_id"/>
+        </index>
+        <index referenceId="KEYSTATION_FAQ_ITEM_IS_FEATURED" indexType="btree">
+            <column name="is_featured"/>
+        </index>
+    </table>
+
+    <!-- ============================== HELPFUL VOTES ============================== -->
+    <table name="etechflow_faq_vote" resource="default" engine="innodb" charset="utf8mb4" collation="utf8mb4_general_ci" comment="Helpful Y/N votes on FAQ items">
+        <column xsi:type="int" name="vote_id" unsigned="true" nullable="false" identity="true" comment="Vote ID"/>
+        <column xsi:type="int" name="item_id" unsigned="true" nullable="false" comment="FAQ item voted on"/>
+        <column xsi:type="smallint" name="vote" unsigned="false" nullable="false" comment="1 = helpful, 0 = not helpful"/>
+        <column xsi:type="varchar" name="ip_hash" nullable="false" length="64" comment="SHA-256 hashed visitor IP (rate-limit + dedupe)"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP" comment="When voted"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="vote_id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="KEYSTATION_FAQ_VOTE_ITEM_IP">
+            <column name="item_id"/>
+            <column name="ip_hash"/>
+        </constraint>
+        <constraint xsi:type="foreign"
+                    referenceId="KEYSTATION_FAQ_VOTE_ITEM_ID_KEYSTATION_FAQ_ITEM_ID"
+                    table="etechflow_faq_vote"
+                    column="item_id"
+                    referenceTable="etechflow_faq_item"
+                    referenceColumn="item_id"
+                    onDelete="CASCADE"/>
+        <index referenceId="KEYSTATION_FAQ_VOTE_ITEM_ID" indexType="btree">
+            <column name="item_id"/>
+        </index>
+    </table>
+
+    <!-- ============================== VISITOR-SUBMITTED PENDING Q&A ============================== -->
+    <table name="etechflow_faq_pending" resource="default" engine="innodb" charset="utf8mb4" collation="utf8mb4_general_ci" comment="Visitor-submitted questions awaiting admin moderation">
+        <column xsi:type="int" name="pending_id" unsigned="true" nullable="false" identity="true" comment="Pending Question ID"/>
+        <column xsi:type="smallint" name="category_id" unsigned="true" nullable="true" comment="Suggested category"/>
+        <column xsi:type="varchar" name="question" nullable="false" length="1000" comment="The submitted question"/>
+        <column xsi:type="varchar" name="visitor_name" nullable="true" length="120" comment="Optional submitter name"/>
+        <column xsi:type="varchar" name="visitor_email" nullable="true" length="160" comment="Optional submitter email"/>
+        <column xsi:type="varchar" name="visitor_ip" nullable="true" length="64" comment="Hashed visitor IP"/>
+        <column xsi:type="smallint" name="status" unsigned="false" nullable="false" default="0" comment="0=pending, 1=approved, 2=rejected"/>
+        <column xsi:type="text" name="admin_note" nullable="true" comment="Internal moderation note"/>
+        <column xsi:type="int" name="approved_item_id" unsigned="true" nullable="true" comment="When approved, link to the resulting item"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP" comment="Submission time"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="pending_id"/>
+        </constraint>
+        <index referenceId="KEYSTATION_FAQ_PENDING_STATUS" indexType="btree">
+            <column name="status"/>
+        </index>
+        <index referenceId="KEYSTATION_FAQ_PENDING_CREATED" indexType="btree">
+            <column name="created_at"/>
+        </index>
+    </table>
+
+    <!-- ============================== TAGS ============================== -->
+    <table name="etechflow_faq_tag" resource="default" engine="innodb" charset="utf8mb4" collation="utf8mb4_general_ci" comment="FAQ tags (cross-category)">
+        <column xsi:type="int" name="tag_id" unsigned="true" nullable="false" identity="true" comment="Tag ID"/>
+        <column xsi:type="varchar" name="slug" nullable="false" length="120" comment="URL slug"/>
+        <column xsi:type="varchar" name="label" nullable="false" length="120" comment="Display label"/>
+        <column xsi:type="smallint" name="is_active" unsigned="false" nullable="false" default="1" comment="Active"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="tag_id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="KEYSTATION_FAQ_TAG_SLUG">
+            <column name="slug"/>
+        </constraint>
+    </table>
+
+    <table name="etechflow_faq_item_tag" resource="default" engine="innodb" charset="utf8mb4" collation="utf8mb4_general_ci" comment="FAQ item ↔ tag join">
+        <column xsi:type="int" name="item_id" unsigned="true" nullable="false" comment="FAQ item"/>
+        <column xsi:type="int" name="tag_id" unsigned="true" nullable="false" comment="Tag"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="item_id"/>
+            <column name="tag_id"/>
+        </constraint>
+        <constraint xsi:type="foreign"
+                    referenceId="KS_FAQ_ITM_TAG_ITM_ID_KS_FAQ_ITM_ID"
+                    table="etechflow_faq_item_tag"
+                    column="item_id"
+                    referenceTable="etechflow_faq_item"
+                    referenceColumn="item_id"
+                    onDelete="CASCADE"/>
+        <constraint xsi:type="foreign"
+                    referenceId="KS_FAQ_ITM_TAG_TAG_ID_KS_FAQ_TAG_ID"
+                    table="etechflow_faq_item_tag"
+                    column="tag_id"
+                    referenceTable="etechflow_faq_tag"
+                    referenceColumn="tag_id"
+                    onDelete="CASCADE"/>
+        <index referenceId="KEYSTATION_FAQ_ITEM_TAG_TAG_ID" indexType="btree">
+            <column name="tag_id"/>
+        </index>
+    </table>
+
+</schema>

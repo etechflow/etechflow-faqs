@@ -1,0 +1,24 @@
+{
+    "name": "etechflow/module-faq",
+    "description": "Help-Centre / FAQ module for Magento 2 with categories, slug-based detail pages, search, related articles, REST API, and admin management. Theme-agnostic — works on Hyvä, Luma, and any custom theme.",
+    "type": "magento2-module",
+    "version": "1.0.0",
+    "license": "MIT",
+    "keywords": ["magento", "magento2", "faq", "help-centre", "knowledge-base", "hyva"],
+    "require": {
+        "php": ">=8.1",
+        "magento/framework": ">=103.0",
+        "magento/module-backend": ">=102.0",
+        "magento/module-ui": ">=101.0",
+        "magento/module-store": ">=101.0",
+        "magento/module-config": ">=101.0"
+    },
+    "autoload": {
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "Etechflow\\Faq\\": ""
+        }
+    }
+}

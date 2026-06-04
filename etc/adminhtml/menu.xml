@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
+    <menu>
+        <add id="Etechflow_Faq::faq_root"
+             title="FAQs"
+             module="Etechflow_Faq"
+             sortOrder="75"
+             parent="Magento_Backend::content"
+             resource="Etechflow_Faq::faq"/>
+        <add id="Etechflow_Faq::category"
+             title="Categories"
+             module="Etechflow_Faq"
+             sortOrder="10"
+             parent="Etechflow_Faq::faq_root"
+             action="etechflow_faq/category"
+             resource="Etechflow_Faq::category"/>
+        <add id="Etechflow_Faq::item"
+             title="Questions &amp; Answers"
+             module="Etechflow_Faq"
+             sortOrder="20"
+             parent="Etechflow_Faq::faq_root"
+             action="etechflow_faq/item"
+             resource="Etechflow_Faq::item"/>
+        <add id="Etechflow_Faq::pending"
+             title="Pending Visitor Questions"
+             module="Etechflow_Faq"
+             sortOrder="30"
+             parent="Etechflow_Faq::faq_root"
+             action="etechflow_faq/pending/index"
+             resource="Etechflow_Faq::pending"/>
+    </menu>
+</config>

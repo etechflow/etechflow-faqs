@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widgets xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Widget:etc/widget.xsd">
+    <widget id="etechflow_faq_snippet"
+            class="Etechflow\Faq\Block\Widget\Snippet"
+            ttl="3600">
+        <label translate="true">FAQ Snippet</label>
+        <description translate="true">Embed a list of FAQs into any CMS page, block, or product description.</description>
+        <parameters>
+            <parameter name="title" xsi:type="text" required="false" visible="true" sort_order="10">
+                <label translate="true">Heading (optional)</label>
+            </parameter>
+            <parameter name="category_identifier" xsi:type="text" required="false" visible="true" sort_order="20">
+                <label translate="true">Filter by category identifier (slug)</label>
+                <description translate="true">e.g. "orders". Leave blank to pull from all categories.</description>
+            </parameter>
+            <parameter name="tag_slug" xsi:type="text" required="false" visible="true" sort_order="25">
+                <label translate="true">Filter by tag slug</label>
+                <description translate="true">Optional. Only items linked to this tag are shown.</description>
+            </parameter>
+            <parameter name="featured_only" xsi:type="select" required="false" visible="true" sort_order="30" source_model="Magento\Config\Model\Config\Source\Yesno">
+                <label translate="true">Featured items only</label>
+            </parameter>
+            <parameter name="limit" xsi:type="text" required="false" visible="true" sort_order="40">
+                <label translate="true">Max items</label>
+                <description translate="true">Default: 5</description>
+            </parameter>
+            <parameter name="show_view_all" xsi:type="select" required="false" visible="true" sort_order="50" source_model="Magento\Config\Model\Config\Source\Yesno">
+                <label translate="true">Show "View all FAQs" link</label>
+            </parameter>
+        </parameters>
+    </widget>
+</widgets>

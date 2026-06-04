@@ -1,0 +1,575 @@
+<?php
+declare(strict_types=1);
+/** @var \Etechflow\Faq\Block\View $block */
+/** @var \Magento\Framework\Escaper $escaper */
+
+$item = $block->getItem();
+if (!$item) { return; }
+
+$category    = $block->getCategory();
+$categories  = $block->getAllCategories();
+$related     = $block->getRelatedItems();
+$cfg         = $block->getConfig();
+$voteUrl     = $block->getVoteEndpoint();
+$canonical   = $block->getCanonicalUrl();
+
+// Brand tokens
+// Emitted raw inside <style> (CSS context) below, so sanitize to a CSS-safe
+// whitelist here. (escapeHtmlAttr would turn "#" into "&#x23;" and break the value.)
+$cPrimary   = preg_replace('/[^#a-zA-Z0-9(),.%\s-]/', '', $cfg->get('branding/primary_color')   ?: '#C41818');
+$cSecondary = preg_replace('/[^#a-zA-Z0-9(),.%\s-]/', '', $cfg->get('branding/secondary_color') ?: '#0535F5');
+$cText      = preg_replace('/[^#a-zA-Z0-9(),.%\s-]/', '', $cfg->get('branding/text_color')      ?: '#0E1025');
+$fontStack  = $cfg->getFontFamily(); // "" = inherit theme
+
+// Contact
+$phone        = $cfg->get('contact/phone');
+$phoneHours   = $cfg->get('contact/phone_hours');
+$email        = $cfg->get('contact/email');
+$emailLead    = $cfg->get('contact/email_response_time');
+$contactUrl   = $cfg->get('contact/contact_form_url') ?: 'contact';
+$showHelpful  = $cfg->isEnabled('display/show_helpful_buttons');
+$contactCardOn = $cfg->isEnabled('contact/show_contact_card');
+
+// SEO toggles
+$schemaOn    = $cfg->isEnabled('seo/enable_schema_jsonld');
+$bcOn        = $cfg->isEnabled('seo/enable_breadcrumb_jsonld');
+$ogOn        = $cfg->isEnabled('seo/enable_opengraph');
+
+$icons = [
+    'orders'    => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"/></svg>',
+    'returns'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>',
+    'delivery'  => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/></svg>',
+    'payment'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"/></svg>',
+    'collect'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>',
+    'account'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z"/></svg>',
+    'support'   => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-4.142-3.358-7.5-7.5-7.5S4.5 7.858 4.5 12m15 0v1.5a1.5 1.5 0 01-1.5 1.5h-1a1.5 1.5 0 01-1.5-1.5V12m4.5 0H21m-16.5 0H3m1.5 0v1.5A1.5 1.5 0 006 15h1a1.5 1.5 0 001.5-1.5V12m-4.5 0a7.5 7.5 0 0115 0"/></svg>',
+    'technical' => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>',
+    'locksmith' => '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/></svg>',
+];
+
+$listingUrl = $block->getListingUrl();
+$catLabel   = $category ? $category->getData('label') : '';
+$catIdent   = $category ? $category->getData('identifier') : '';
+
+/**
+ * Renders an icon for a category: uploaded image if present, otherwise the
+ * built-in SVG by icon_key. Returns ready-to-print HTML (already-escaped).
+ */
+$renderCatIcon = function ($cat) use ($icons, $cfg, $escaper): string {
+    if (!$cat) {
+        return $icons['support'];
+    }
+    $img = (string) $cat->getData('icon_image');
+    if ($img !== '') {
+        $url = $cfg->resolveMediaUrl($img);
+        if ($url !== '') {
+            return '<img src="' . $escaper->escapeHtmlAttr($url) . '" alt="" loading="lazy" style="width:100%;height:100%;object-fit:contain;display:block">';
+        }
+    }
+    $key = (string) $cat->getData('icon_key');
+    return $icons[$key] ?? $icons['support'];
+};
+
+// Build JSON-LD payloads
+$ogTitle       = $item->getMetaTitle() !== '' ? $item->getMetaTitle() : $item->getQuestion();
+$ogDescription = $item->getMetaDescription() !== ''
+    ? $item->getMetaDescription()
+    : mb_substr(trim(strip_tags($item->getAnswer())), 0, 200);
+
+$schemaQuestion = null;
+if ($schemaOn) {
+    $schemaQuestion = [
+        '@context'       => 'https://schema.org',
+        '@type'          => 'FAQPage',
+        'mainEntity'     => [[
+            '@type'          => 'Question',
+            'name'           => $item->getQuestion(),
+            'url'            => $canonical,
+            'acceptedAnswer' => [
+                '@type' => 'Answer',
+                'text'  => trim(strip_tags($item->getAnswer())),
+            ],
+        ]],
+    ];
+}
+
+$schemaBreadcrumb = null;
+if ($bcOn) {
+    $items = [
+        ['@type' => 'ListItem', 'position' => 1, 'name' => (string) __('Home'),        'item' => $block->getUrl('')],
+        ['@type' => 'ListItem', 'position' => 2, 'name' => (string) __('Help Centre'), 'item' => $listingUrl],
+    ];
+    if ($catLabel) {
+        $items[] = ['@type' => 'ListItem', 'position' => 3, 'name' => $catLabel, 'item' => rtrim($listingUrl, '/') . '#' . $catIdent];
+        $items[] = ['@type' => 'ListItem', 'position' => 4, 'name' => $item->getQuestion(), 'item' => $canonical];
+    } else {
+        $items[] = ['@type' => 'ListItem', 'position' => 3, 'name' => $item->getQuestion(), 'item' => $canonical];
+    }
+    $schemaBreadcrumb = [
+        '@context'        => 'https://schema.org',
+        '@type'           => 'BreadcrumbList',
+        'itemListElement' => $items,
+    ];
+}
+?>
+<?php if ($ogOn): ?>
+<meta property="og:type" content="article">
+<meta property="og:title" content="<?= $escaper->escapeHtmlAttr($ogTitle) ?>">
+<?php if ($ogDescription): ?><meta property="og:description" content="<?= $escaper->escapeHtmlAttr($ogDescription) ?>"><?php endif; ?>
+<?php if ($canonical): ?><meta property="og:url" content="<?= $escaper->escapeUrl($canonical) ?>"><?php endif; ?>
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="<?= $escaper->escapeHtmlAttr($ogTitle) ?>">
+<?php if ($ogDescription): ?><meta name="twitter:description" content="<?= $escaper->escapeHtmlAttr($ogDescription) ?>"><?php endif; ?>
+<?php endif; ?>
+<?php if ($canonical): ?><link rel="canonical" href="<?= $escaper->escapeUrl($canonical) ?>"><?php endif; ?>
+
+<?php if ($schemaQuestion): ?>
+<script type="application/ld+json"><?= /* @noEscape */ json_encode($schemaQuestion, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
+<?php endif; ?>
+<?php if ($schemaBreadcrumb): ?>
+<script type="application/ld+json"><?= /* @noEscape */ json_encode($schemaBreadcrumb, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
+<?php endif; ?>
+
+<style>
+.kfaq-view{
+    --kfaq-primary:<?= /* @noEscape */ $cPrimary ?>;
+    --kfaq-secondary:<?= /* @noEscape */ $cSecondary ?>;
+    --kfaq-text:<?= /* @noEscape */ $cText ?>;
+    --kfaq-bg:#f7f8fb;
+    --kfaq-card:#fff;
+    --kfaq-border:#e5e7eb;
+    --kfaq-border-soft:#f3f4f6;
+    --kfaq-muted:#6b7280;
+    --kfaq-mute2:#9ca3af;
+    --kfaq-mute3:#d1d5db;
+    
+    padding:18px 0 44px;
+    color:var(--kfaq-text);
+    <?php if ($fontStack !== ''): ?>font-family:<?= /* @noEscape */ $fontStack ?>;<?php endif; ?>
+    box-sizing:border-box;
+}
+.kfaq-view *,.kfaq-view *::before,.kfaq-view *::after{box-sizing:border-box}
+.kfaq-view a{text-decoration:none;color:inherit}
+.kfaq-view img{max-width:100%;height:auto;display:block}
+.kfaq-shell{max-width:1280px;margin:0 auto;padding:0 1rem}
+
+.kfaq-topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:6px 0 14px}
+.kfaq-crumbs{font-size:.78em;color:var(--kfaq-muted);display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0;padding:0;list-style:none}
+.kfaq-crumbs a{color:var(--kfaq-muted);font-weight:600}
+.kfaq-crumbs a:hover{color:var(--kfaq-secondary)}
+.kfaq-crumbs .kfaq-sep{color:var(--kfaq-mute3)}
+.kfaq-crumbs .kfaq-crumb-cat{color:var(--kfaq-primary);font-weight:800;letter-spacing:.07em;text-transform:uppercase;font-size:.72em}
+.kfaq-crumbs .kfaq-crumb-current{color:var(--kfaq-text);font-weight:700;max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kfaq-back{display:inline-flex;align-items:center;gap:8px;background:var(--kfaq-card);border:1px solid var(--kfaq-border);color:var(--kfaq-text);padding:9px 16px;border-radius:8px;font-weight:700;font-size:.78em;transition:all .15s;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.kfaq-back:hover{border-color:var(--kfaq-secondary);color:var(--kfaq-secondary);box-shadow:0 4px 12px rgba(0,0,0,.08)}
+
+.kfaq-grid{display:grid;grid-template-columns:1fr;gap:18px}
+@media(min-width:900px){.kfaq-grid{grid-template-columns:240px 1fr;gap:22px}}
+@media(min-width:1100px){.kfaq-grid{grid-template-columns:240px 1fr 300px;gap:24px}}
+
+.kfaq-sidebar{background:var(--kfaq-card);border:1px solid var(--kfaq-border);border-radius:14px;padding:8px;align-self:start}
+.kfaq-sidebar h3{font-size:.66em;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--kfaq-mute2);margin:10px 12px 8px}
+.kfaq-sidebar-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:2px}
+.kfaq-sidelink{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:9px;font-size:.83em;font-weight:700;color:#374151;transition:background .15s,color .15s}
+.kfaq-sidelink:hover{background:#f5f6fb;color:var(--kfaq-secondary)}
+.kfaq-sidelink.is-active{background:var(--kfaq-text);color:#fff}
+.kfaq-sidelink .kfaq-ico{width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.kfaq-sidelink .kfaq-ico svg{width:100%;height:100%}
+.kfaq-sidelink .kfaq-ico img{width:100%;height:100%;object-fit:contain}
+.kfaq-sidelink.is-active .kfaq-ico{color:var(--kfaq-primary)}
+.kfaq-sidelink:not(.is-active) .kfaq-ico{color:var(--kfaq-secondary)}
+
+.kfaq-main{background:var(--kfaq-card);border:1px solid var(--kfaq-border);border-radius:14px;padding:28px 30px;min-width:0}
+@media(max-width:639px){.kfaq-main{padding:20px 18px}}
+.kfaq-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.65em;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--kfaq-secondary);margin-bottom:10px}
+.kfaq-eyebrow .kfaq-dot{width:5px;height:5px;border-radius:50%;background:var(--kfaq-primary);display:inline-block}
+.kfaq-eyebrow a{color:var(--kfaq-primary)}
+.kfaq-eyebrow a:hover{text-decoration:underline}
+.kfaq-h1{font-size:1.75em;font-weight:900;color:var(--kfaq-text);line-height:1.2;margin:0 0 12px;letter-spacing:-.01em}
+@media(min-width:768px){.kfaq-h1{font-size:2.1em}}
+.kfaq-subtitle{font-size:.95em;color:var(--kfaq-muted);line-height:1.65;margin:0 0 24px}
+.kfaq-divider{border:none;border-top:1px solid var(--kfaq-border-soft);margin:20px 0 22px}
+
+.kfaq-answer{color:#374151;font-size:.95em;line-height:1.75}
+.kfaq-answer p{margin:0 0 14px}
+.kfaq-answer h2{font-size:1.15em;font-weight:800;color:var(--kfaq-text);margin:22px 0 10px;letter-spacing:-.005em}
+.kfaq-answer h3{font-size:1em;font-weight:800;color:var(--kfaq-text);margin:18px 0 8px}
+.kfaq-answer ul,.kfaq-answer ol{padding-left:22px;margin:0 0 14px}
+.kfaq-answer li{margin:0 0 6px;line-height:1.65}
+.kfaq-answer a{color:var(--kfaq-secondary);font-weight:600;border-bottom:1px solid rgba(0,0,0,.08)}
+.kfaq-answer a:hover{border-bottom-color:var(--kfaq-secondary)}
+.kfaq-answer strong{color:var(--kfaq-text);font-weight:700}
+.kfaq-answer blockquote{border-left:3px solid var(--kfaq-primary);background:#fef7f7;margin:14px 0;padding:12px 16px;color:var(--kfaq-text);font-style:italic}
+.kfaq-answer table{width:100%;border-collapse:collapse;margin:14px 0;font-size:.88em}
+.kfaq-answer th,.kfaq-answer td{padding:9px 12px;border:1px solid var(--kfaq-border);text-align:left}
+.kfaq-answer th{font-weight:800;color:var(--kfaq-text)}
+
+.kfaq-rail{display:flex;flex-direction:column;gap:14px;min-width:0}
+.kfaq-card{background:var(--kfaq-card);border:1px solid var(--kfaq-border);border-radius:14px;padding:18px}
+.kfaq-card h4{font-size:.85em;font-weight:800;color:var(--kfaq-text);margin:0 0 10px}
+.kfaq-search{position:relative;display:flex;align-items:stretch;border:1px solid var(--kfaq-border);border-radius:9px;overflow:hidden;transition:border-color .15s,background .15s}
+.kfaq-search:focus-within{border-color:var(--kfaq-secondary);background:#fff}
+.kfaq-search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--kfaq-mute2);pointer-events:none}
+.kfaq-search input{flex:1;padding:11px 12px 11px 36px;border:none;font-size:.83em;background:transparent;outline:none;color:var(--kfaq-text);min-width:0;font-family:inherit}
+.kfaq-search button{padding:0 16px;background:var(--kfaq-secondary);color:#fff;font-weight:800;font-size:.72em;border:none;cursor:pointer;letter-spacing:.04em;text-transform:uppercase;font-family:inherit}
+
+.kfaq-helpful-row{display:flex;gap:8px}
+.kfaq-helpful-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 8px;background:var(--kfaq-card);border:1.5px solid var(--kfaq-border);border-radius:9px;font-size:.78em;font-weight:800;color:var(--kfaq-text);cursor:pointer;transition:all .15s;font-family:inherit}
+.kfaq-helpful-btn:hover{border-color:var(--kfaq-secondary);color:var(--kfaq-secondary);background:#f0f4ff}
+.kfaq-helpful-btn.is-picked-yes{border-color:#16a34a;color:#16a34a;background:#f0fdf4}
+.kfaq-helpful-btn.is-picked-no{border-color:var(--kfaq-primary);color:var(--kfaq-primary);background:#fef2f2}
+.kfaq-helpful-btn[disabled]{opacity:.6;cursor:not-allowed}
+.kfaq-helpful-thanks{display:none;margin:10px 0 0;font-size:.75em;color:#16a34a;font-weight:700}
+.kfaq-helpful-thanks.is-on{display:block}
+.kfaq-helpful-thanks.is-err{color:var(--kfaq-primary)}
+.kfaq-vote-counts{margin:8px 0 0;font-size:.7em;color:var(--kfaq-muted)}
+
+.kfaq-view .kfaq-contact{background:linear-gradient(135deg,#0E1025 0%,#1a1d3d 100%) !important;background-color:#0E1025 !important;color:#ffffff !important;border-radius:14px !important;padding:20px !important;position:relative;overflow:hidden;border:none !important}
+.kfaq-view .kfaq-contact::before{content:"";position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(0,0,0,.18) 0%,transparent 70%)}
+.kfaq-view .kfaq-contact h4{font-size:.95em !important;font-weight:800 !important;margin:0 0 4px !important;color:#ffffff !important;position:relative}
+.kfaq-view .kfaq-contact .kfaq-contact-lead{font-size:.78em !important;color:rgba(220,225,255,.85) !important;margin:0 0 14px !important;position:relative;line-height:1.5 !important}
+.kfaq-view .kfaq-contact .kfaq-contact-row{display:flex !important;align-items:center !important;gap:11px !important;padding:9px 0 !important;border-top:1px solid rgba(255,255,255,.12) !important;position:relative;color:#ffffff !important;text-decoration:none !important}
+.kfaq-view .kfaq-contact .kfaq-contact-row:first-of-type{border-top:none !important}
+.kfaq-view .kfaq-contact .kfaq-contact-ico{width:32px !important;height:32px !important;min-width:32px !important;border-radius:8px !important;background:#C41818 !important;background-color:#C41818 !important;display:flex !important;align-items:center !important;justify-content:center !important;flex-shrink:0 !important;color:#ffffff !important;opacity:1 !important;visibility:visible !important}
+.kfaq-view .kfaq-contact .kfaq-contact-ico svg{display:block !important;visibility:visible !important;opacity:1 !important;width:15px !important;height:15px !important;stroke:#ffffff !important;color:#ffffff !important;fill:none !important}
+.kfaq-view .kfaq-contact .kfaq-contact-ico svg path{stroke:#ffffff !important}
+.kfaq-view .kfaq-contact .kfaq-lbl{font-size:.62em !important;color:rgba(220,225,255,.7) !important;text-transform:uppercase !important;letter-spacing:.08em !important;margin:0 !important;font-weight:700 !important}
+.kfaq-view .kfaq-contact .kfaq-val{font-size:.82em !important;color:#ffffff !important;font-weight:800 !important;margin:1px 0 0 !important;word-break:break-word}
+.kfaq-view .kfaq-contact a.kfaq-contact-row:hover .kfaq-val{color:#93a8ff !important}
+
+.kfaq-related-wrap{margin-top:34px}
+.kfaq-related-title{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.kfaq-related-title h2{font-size:1.25em;font-weight:900;color:var(--kfaq-text);margin:0;letter-spacing:-.005em}
+.kfaq-related-title .kfaq-bar{flex:1;height:1px;background:linear-gradient(to right,var(--kfaq-primary) 0,transparent 60%)}
+/* Horizontal swipe row */
+.kfaq-related-grid{display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;padding:4px 4px 14px;margin:0 -4px;scrollbar-width:thin;scrollbar-color:var(--kfaq-primary) #f3f4f6}
+.kfaq-related-grid::-webkit-scrollbar{height:8px}
+.kfaq-related-grid::-webkit-scrollbar-track{background:#f3f4f6;border-radius:4px}
+.kfaq-related-grid::-webkit-scrollbar-thumb{background:var(--kfaq-primary);border-radius:4px}
+.kfaq-related-grid::-webkit-scrollbar-thumb:hover{background:#a01414}
+.kfaq-related-card{flex:0 0 280px;scroll-snap-align:start;display:flex;flex-direction:column;background:var(--kfaq-card);border:1px solid var(--kfaq-border);border-radius:12px;padding:16px;transition:all .18s;cursor:pointer;position:relative;overflow:hidden}
+@media(min-width:640px){.kfaq-related-card{flex:0 0 300px}}
+.kfaq-related-card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--kfaq-secondary);transform:translateY(-3px);transition:transform .2s}
+.kfaq-related-card:hover{border-color:var(--kfaq-secondary);box-shadow:0 10px 24px -8px rgba(0,0,0,.12);transform:translateY(-1px)}
+.kfaq-related-card:hover::before{transform:translateY(0)}
+.kfaq-related-card .kfaq-rc-eyebrow{font-size:.6em;font-weight:900;color:var(--kfaq-primary);letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}
+.kfaq-related-card .kfaq-rc-q{font-size:.92em;font-weight:800;color:var(--kfaq-text);line-height:1.35;margin:0 0 8px}
+.kfaq-related-card .kfaq-rc-sub{font-size:.76em;color:var(--kfaq-muted);line-height:1.55;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.kfaq-related-card .kfaq-rc-arrow{margin-top:auto;padding-top:12px;display:inline-flex;align-items:center;gap:6px;color:var(--kfaq-secondary);font-size:.7em;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+.kfaq-related-empty{text-align:center;padding:30px;color:var(--kfaq-mute2);font-size:.85em;background:var(--kfaq-card);border:1px dashed var(--kfaq-border);border-radius:12px}
+</style>
+
+<article class="kfaq-view"
+         itemscope itemtype="https://schema.org/Question"
+         data-vote-endpoint="<?= $escaper->escapeHtmlAttr($voteUrl) ?>"
+         data-item-id="<?= (int) $item->getItemId() ?>">
+    <div class="kfaq-shell">
+
+        <div class="kfaq-topbar">
+            <nav aria-label="<?= $escaper->escapeHtmlAttr(__('Breadcrumb')) ?>">
+                <ol class="kfaq-crumbs">
+                    <li><a href="<?= $escaper->escapeUrl($block->getUrl('')) ?>"><?= $escaper->escapeHtml(__('Home')) ?></a></li>
+                    <li class="kfaq-sep">/</li>
+                    <li><a href="<?= $escaper->escapeUrl($listingUrl) ?>"><?= $escaper->escapeHtml(__('Help Centre')) ?></a></li>
+                    <?php if ($catLabel): ?>
+                        <li class="kfaq-sep">/</li>
+                        <li><a class="kfaq-crumb-cat" href="<?= $escaper->escapeUrl($listingUrl) ?>#<?= $escaper->escapeHtmlAttr($catIdent) ?>"><?= $escaper->escapeHtml($catLabel) ?></a></li>
+                    <?php endif; ?>
+                    <li class="kfaq-sep">/</li>
+                    <li><span class="kfaq-crumb-current"><?= $escaper->escapeHtml($item->getQuestion()) ?></span></li>
+                </ol>
+            </nav>
+            <a class="kfaq-back" href="<?= $escaper->escapeUrl($listingUrl) ?>">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+                </svg>
+                <?= $escaper->escapeHtml(__('Back to FAQs')) ?>
+            </a>
+        </div>
+
+        <div class="kfaq-grid">
+
+            <aside class="kfaq-sidebar">
+                <h3><?= $escaper->escapeHtml(__('Help Topics')) ?></h3>
+                <ul class="kfaq-sidebar-list">
+                    <?php foreach ($categories as $c):
+                        $cIdent   = (string) $c->getData('identifier');
+                        $isActive = $category && $cIdent === $catIdent;
+                    ?>
+                        <li>
+                            <a class="kfaq-sidelink<?= $isActive ? ' is-active' : '' ?>"
+                               href="<?= $escaper->escapeUrl($listingUrl) ?>#<?= $escaper->escapeHtmlAttr($cIdent) ?>">
+                                <span class="kfaq-ico"><?= /* @noEscape */ $renderCatIcon($c) ?></span>
+                                <span><?= $escaper->escapeHtml($c->getData('label')) ?></span>
+                            </a>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </aside>
+
+            <section class="kfaq-main">
+                <div class="kfaq-eyebrow">
+                    <span class="kfaq-dot"></span>
+                    <a href="<?= $escaper->escapeUrl($listingUrl) ?>"><?= $escaper->escapeHtml(__('Help Centre')) ?></a>
+                    <?php if ($catLabel): ?>
+                        <span style="color:var(--kfaq-mute3)">&rsaquo;</span>
+                        <span style="color:var(--kfaq-primary)"><?= $escaper->escapeHtml($catLabel) ?></span>
+                    <?php endif; ?>
+                </div>
+                <h1 class="kfaq-h1" itemprop="name"><?= $escaper->escapeHtml($item->getQuestion()) ?></h1>
+                <?php if ($item->getSubtitle()): ?>
+                    <p class="kfaq-subtitle"><?= $escaper->escapeHtml($item->getSubtitle()) ?></p>
+                <?php endif; ?>
+                <hr class="kfaq-divider">
+                <div class="kfaq-answer"
+                     itemprop="acceptedAnswer"
+                     itemscope itemtype="https://schema.org/Answer">
+                    <meta itemprop="text" content="<?= $escaper->escapeHtmlAttr(trim(strip_tags($item->getAnswer()))) ?>">
+                    <?= /* @noEscape */ $item->getAnswer() ?>
+                </div>
+            </section>
+
+            <aside class="kfaq-rail">
+
+                <div class="kfaq-card" style="position:relative">
+                    <h4><?= $escaper->escapeHtml(__('Search help articles')) ?></h4>
+                    <form class="kfaq-search" method="get" action="<?= $escaper->escapeUrl($listingUrl) ?>" data-kfaq-rail-form style="position:relative">
+                        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                        </svg>
+                        <input type="search" name="kfaq_q" data-kfaq-rail-search placeholder="<?= $escaper->escapeHtmlAttr(__('Search articles…')) ?>" autocomplete="off">
+                        <button type="submit"><?= $escaper->escapeHtml(__('Go')) ?></button>
+                    </form>
+                    <div class="kfaq-rail-suggest" data-kfaq-rail-suggest></div>
+                </div>
+                <style>
+                .kfaq-rail-suggest{position:absolute;left:18px;right:18px;top:100%;margin-top:-4px;background:#fff;border:1px solid var(--kfaq-border);border-radius:8px;box-shadow:0 8px 24px -8px rgba(0,0,0,.15);z-index:50;max-height:340px;overflow:auto;display:none}
+                .kfaq-rail-suggest.is-on{display:block}
+                .kfaq-rail-suggest a{display:flex;flex-direction:column;gap:2px;padding:10px 14px;text-decoration:none;color:var(--kfaq-text);border-bottom:1px solid var(--kfaq-border-soft, #f3f4f6)}
+                .kfaq-rail-suggest a:last-child{border-bottom:none}
+                .kfaq-rail-suggest a:hover{background:#f5f6fb}
+                .kfaq-rail-suggest .q{font-size:.85em;font-weight:700;line-height:1.35}
+                .kfaq-rail-suggest .cat{font-size:.62em;font-weight:700;color:var(--kfaq-secondary);text-transform:uppercase;letter-spacing:.08em}
+                .kfaq-rail-suggest .none{padding:14px;font-size:.8em;color:var(--kfaq-mute2);text-align:center}
+                </style>
+                <script>
+                (function () {
+                    var f = document.querySelector('[data-kfaq-rail-form]');
+                    if (!f) return;
+                    var inp  = f.querySelector('[data-kfaq-rail-search]');
+                    var box  = document.querySelector('[data-kfaq-rail-suggest]');
+                    var endpoint = <?= json_encode($block->getUrl('faqs/search/index')) ?>;
+                    var debounceTimer = null;
+                    var lastQuery = '';
+
+                    function hideSuggest() {
+                        if (!box) return;
+                        box.classList.remove('is-on');
+                        box.innerHTML = '';
+                    }
+                    function renderSuggest(items) {
+                        if (!box) return;
+                        if (!items.length) {
+                            box.innerHTML = '<div class="none">No matches found.</div>';
+                            box.classList.add('is-on');
+                            return;
+                        }
+                        box.innerHTML = items.map(function () {
+                            return '<a href="#"><span class="q"></span><span class="cat"></span></a>';
+                        }).join('');
+                        box.querySelectorAll('a').forEach(function (a, i) {
+                            a.href = items[i].url;
+                            a.querySelector('.q').textContent   = items[i].question || '';
+                            a.querySelector('.cat').textContent = items[i].category || '';
+                        });
+                        box.classList.add('is-on');
+                    }
+
+                    if (inp) {
+                        ['keydown','keyup','keypress','input','focus','click'].forEach(function (ev) {
+                            inp.addEventListener(ev, function (e) { e.stopPropagation(); });
+                        });
+                        inp.addEventListener('input', function () {
+                            var q = inp.value.trim();
+                            if (debounceTimer) { clearTimeout(debounceTimer); }
+                            if (q.length < 2) { hideSuggest(); return; }
+                            if (q === lastQuery) { return; }
+                            lastQuery = q;
+                            debounceTimer = setTimeout(function () {
+                                fetch(endpoint + '?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+                                    .then(function (r) { return r.json(); })
+                                    .then(function (j) { renderSuggest((j && j.results) || []); })
+                                    .catch(function () { hideSuggest(); });
+                            }, 220);
+                        });
+                        inp.addEventListener('blur', function () {
+                            setTimeout(hideSuggest, 200);
+                        });
+                    }
+
+                    // Translate kfaq_q → q on submit
+                    f.addEventListener('submit', function (e) {
+                        e.preventDefault();
+                        var v = inp ? (inp.value || '').trim() : '';
+                        var url = f.getAttribute('action') || '/faqs';
+                        if (v) { url += (url.indexOf('?') >= 0 ? '&' : '?') + 'q=' + encodeURIComponent(v); }
+                        window.location.href = url;
+                    });
+                })();
+                </script>
+
+                <?php if ($showHelpful): ?>
+                <div class="kfaq-card" data-kfaq-helpful>
+                    <h4><?= $escaper->escapeHtml(__('Was this article helpful?')) ?></h4>
+                    <div class="kfaq-helpful-row">
+                        <button type="button" class="kfaq-helpful-btn" data-vote="yes" aria-label="<?= $escaper->escapeHtmlAttr(__('Yes')) ?>">
+                            <span aria-hidden="true">👍</span>
+                            <span><?= $escaper->escapeHtml(__('Yes')) ?></span>
+                        </button>
+                        <button type="button" class="kfaq-helpful-btn" data-vote="no" aria-label="<?= $escaper->escapeHtmlAttr(__('No')) ?>">
+                            <span aria-hidden="true">👎</span>
+                            <span><?= $escaper->escapeHtml(__('No')) ?></span>
+                        </button>
+                    </div>
+                    <p class="kfaq-helpful-thanks"></p>
+                    <p class="kfaq-vote-counts">
+                        <?= $escaper->escapeHtml(__('%1 helpful · %2 not helpful', $item->getHelpfulCount(), $item->getUnhelpfulCount())) ?>
+                    </p>
+                </div>
+                <?php endif; ?>
+
+                <?php if ($contactCardOn && ($phone || $email || $contactUrl)): ?>
+                <div class="kfaq-contact">
+                    <h4><?= $escaper->escapeHtml(__('Still need help?')) ?></h4>
+                    <p class="kfaq-contact-lead"><?= $escaper->escapeHtml(__('Our team is here to help.')) ?></p>
+
+                    <?php if ($phone): ?>
+                        <a href="tel:<?= $escaper->escapeHtmlAttr(preg_replace('/\\s+/', '', $phone)) ?>" class="kfaq-contact-row">
+                            <span class="kfaq-contact-ico">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
+                            </span>
+                            <div style="min-width:0">
+                                <p class="kfaq-lbl"><?= $escaper->escapeHtml(__('Call')) ?></p>
+                                <p class="kfaq-val"><?= $escaper->escapeHtml($phone) ?></p>
+                                <?php if ($phoneHours): ?><p class="kfaq-lbl" style="margin-top:2px"><?= $escaper->escapeHtml($phoneHours) ?></p><?php endif; ?>
+                            </div>
+                        </a>
+                    <?php endif; ?>
+
+                    <?php if ($email): ?>
+                        <a href="mailto:<?= $escaper->escapeHtmlAttr($email) ?>" class="kfaq-contact-row">
+                            <span class="kfaq-contact-ico">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
+                            </span>
+                            <div style="min-width:0">
+                                <p class="kfaq-lbl"><?= $escaper->escapeHtml(__('Email')) ?></p>
+                                <p class="kfaq-val"><?= $escaper->escapeHtml($email) ?></p>
+                                <?php if ($emailLead): ?><p class="kfaq-lbl" style="margin-top:2px"><?= $escaper->escapeHtml($emailLead) ?></p><?php endif; ?>
+                            </div>
+                        </a>
+                    <?php endif; ?>
+
+                    <?php if ($contactUrl):
+                        $cUrl = preg_match('#^https?://#', $contactUrl) ? $contactUrl : $block->getUrl($contactUrl);
+                    ?>
+                        <a href="<?= $escaper->escapeUrl($cUrl) ?>" class="kfaq-contact-row">
+                            <span class="kfaq-contact-ico">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/></svg>
+                            </span>
+                            <div style="min-width:0">
+                                <p class="kfaq-lbl"><?= $escaper->escapeHtml(__('Contact form')) ?></p>
+                                <p class="kfaq-val"><?= $escaper->escapeHtml(__('Open contact page')) ?></p>
+                            </div>
+                        </a>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
+
+            </aside>
+        </div>
+
+        <div class="kfaq-related-wrap">
+            <div class="kfaq-related-title">
+                <h2><?= $escaper->escapeHtml(__('Related articles')) ?></h2>
+                <span class="kfaq-bar"></span>
+            </div>
+            <?php if (!empty($related)): ?>
+                <div class="kfaq-related-grid">
+                    <?php foreach ($related as $r):
+                        $rUrl = $block->getDetailUrl($catIdent, (string) $r->getData('url_key'));
+                    ?>
+                        <a class="kfaq-related-card" href="<?= $escaper->escapeUrl($rUrl) ?>">
+                            <span class="kfaq-rc-eyebrow"><?= $escaper->escapeHtml($catLabel) ?></span>
+                            <p class="kfaq-rc-q"><?= $escaper->escapeHtml($r->getQuestion()) ?></p>
+                            <?php if ($r->getSubtitle()): ?>
+                                <p class="kfaq-rc-sub"><?= $escaper->escapeHtml($r->getSubtitle()) ?></p>
+                            <?php endif; ?>
+                            <span class="kfaq-rc-arrow">
+                                <?= $escaper->escapeHtml(__('Read article')) ?>
+                                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                            </span>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <div class="kfaq-related-empty"><?= $escaper->escapeHtml(__('No related articles yet.')) ?></div>
+            <?php endif; ?>
+        </div>
+
+    </div>
+</article>
+
+<script>
+(function () {
+    'use strict';
+    var root = document.querySelector('.kfaq-view[data-vote-endpoint]');
+    if (!root) { return; }
+    var helpful = root.querySelector('[data-kfaq-helpful]');
+    if (!helpful) { return; }
+    var endpoint = root.getAttribute('data-vote-endpoint');
+    var itemId   = root.getAttribute('data-item-id');
+    var buttons  = helpful.querySelectorAll('.kfaq-helpful-btn');
+    var thanks   = helpful.querySelector('.kfaq-helpful-thanks');
+    var locked = false;
+
+    function setMsg(text, isErr) {
+        if (!thanks) { return; }
+        thanks.textContent = text;
+        thanks.classList.toggle('is-on', !!text);
+        thanks.classList.toggle('is-err', !!isErr);
+    }
+
+    buttons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            if (locked) { return; }
+            locked = true;
+            var vote = btn.getAttribute('data-vote');
+            buttons.forEach(function (b) {
+                b.classList.remove('is-picked-yes', 'is-picked-no');
+                b.setAttribute('disabled', 'disabled');
+            });
+            btn.classList.add(vote === 'yes' ? 'is-picked-yes' : 'is-picked-no');
+            var fd = new FormData();
+            fd.append('item_id', itemId);
+            fd.append('vote', vote);
+            fd.append('form_key', (window.FORM_KEY || (window.checkout && window.checkout.formKey) || ''));
+            fetch(endpoint, { method: 'POST', body: fd, credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (j) {
+                    if (j && j.ok) {
+                        setMsg(j.message || 'Thanks!', false);
+                    } else {
+                        setMsg((j && j.message) || 'Could not save your vote.', true);
+                        locked = false;
+                        buttons.forEach(function (b) { b.removeAttribute('disabled'); });
+                    }
+                })
+                .catch(function () {
+                    setMsg('Network error. Please try again.', true);
+                    locked = false;
+                    buttons.forEach(function (b) { b.removeAttribute('disabled'); });
+                });
+        });
+    });
+})();
+</script>

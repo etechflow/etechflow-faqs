@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<listing xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
+
+    <argument name="data" xsi:type="array">
+        <item name="js_config" xsi:type="array">
+            <item name="provider" xsi:type="string">etechflow_faq_item_listing.etechflow_faq_item_listing_data_source</item>
+        </item>
+    </argument>
+
+    <settings>
+        <buttons>
+            <button name="add">
+                <url path="*/*/new"/>
+                <class>primary</class>
+                <label translate="true">Add New FAQ</label>
+            </button>
+        </buttons>
+        <spinner>etechflow_faq_item_columns</spinner>
+        <deps>
+            <dep>etechflow_faq_item_listing.etechflow_faq_item_listing_data_source</dep>
+        </deps>
+    </settings>
+
+    <dataSource name="etechflow_faq_item_listing_data_source" component="Magento_Ui/js/grid/provider">
+        <settings>
+            <storageConfig>
+                <param name="indexField" xsi:type="string">item_id</param>
+            </storageConfig>
+            <updateUrl path="mui/index/render"/>
+        </settings>
+        <aclResource>Etechflow_Faq::item</aclResource>
+        <dataProvider class="Etechflow\Faq\Ui\DataProvider\Item\ListingDataProvider"
+                      name="etechflow_faq_item_listing_data_source">
+            <settings>
+                <requestFieldName>id</requestFieldName>
+                <primaryFieldName>item_id</primaryFieldName>
+            </settings>
+        </dataProvider>
+    </dataSource>
+
+    <listingToolbar name="listing_top">
+        <settings>
+            <sticky>true</sticky>
+        </settings>
+        <bookmark name="bookmarks"/>
+        <columnsControls name="columns_controls"/>
+        <filterSearch name="fulltext"/>
+        <filters name="listing_filters"/>
+        <paging name="listing_paging"/>
+    </listingToolbar>
+
+    <columns name="etechflow_faq_item_columns">
+
+        <selectionsColumn name="ids">
+            <settings>
+                <indexField>item_id</indexField>
+            </settings>
+        </selectionsColumn>
+
+        <column name="item_id">
+            <settings>
+                <filter>textRange</filter>
+                <label translate="true">ID</label>
+                <sorting>asc</sorting>
+            </settings>
+        </column>
+
+        <column name="category_label">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Category</label>
+            </settings>
+        </column>
+
+        <column name="question">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Question</label>
+            </settings>
+        </column>
+
+        <column name="sort_order">
+            <settings>
+                <filter>textRange</filter>
+                <label translate="true">Sort Order</label>
+            </settings>
+        </column>
+
+        <column name="is_active" component="Magento_Ui/js/grid/columns/select">
+            <settings>
+                <options class="Etechflow\Faq\Model\Source\IsActive"/>
+                <filter>select</filter>
+                <dataType>select</dataType>
+                <label translate="true">Active</label>
+            </settings>
+        </column>
+
+        <column name="is_featured" component="Magento_Ui/js/grid/columns/select">
+            <settings>
+                <options class="Magento\Config\Model\Config\Source\Yesno"/>
+                <filter>select</filter>
+                <dataType>select</dataType>
+                <label translate="true">Featured</label>
+            </settings>
+        </column>
+
+        <column name="helpful_count">
+            <settings>
+                <filter>textRange</filter>
+                <sortable>true</sortable>
+                <label translate="true">Helpful 👍</label>
+            </settings>
+        </column>
+
+        <column name="unhelpful_count">
+            <settings>
+                <filter>textRange</filter>
+                <sortable>true</sortable>
+                <label translate="true">Not helpful 👎</label>
+            </settings>
+        </column>
+
+        <actionsColumn name="actions" class="Etechflow\Faq\Ui\Component\Listing\Column\ItemActions">
+            <settings>
+                <indexField>item_id</indexField>
+                <label translate="true">Actions</label>
+            </settings>
+        </actionsColumn>
+    </columns>
+</listing>

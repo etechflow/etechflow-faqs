@@ -1,0 +1,107 @@
+{
+    "etechflow_faq_category": {
+        "column": {
+            "category_id": true,
+            "identifier": true,
+            "label": true,
+            "icon_key": true,
+            "icon_image": true,
+            "sort_order": true,
+            "is_active": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "KEYSTATION_FAQ_CATEGORY_IDENTIFIER": true
+        }
+    },
+    "etechflow_faq_item": {
+        "column": {
+            "item_id": true,
+            "category_id": true,
+            "url_key": true,
+            "question": true,
+            "subtitle": true,
+            "answer": true,
+            "meta_title": true,
+            "meta_description": true,
+            "sort_order": true,
+            "is_active": true,
+            "is_featured": true,
+            "helpful_count": true,
+            "unhelpful_count": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "KEYSTATION_FAQ_ITEM_CATEGORY_ID_URL_KEY": true,
+            "KEYSTATION_FAQ_ITEM_CTGR_ID_KEYSTATION_FAQ_CTGR_CTGR_ID": true
+        },
+        "index": {
+            "KEYSTATION_FAQ_ITEM_CATEGORY_ID": true,
+            "KEYSTATION_FAQ_ITEM_IS_FEATURED": true
+        }
+    },
+    "etechflow_faq_vote": {
+        "column": {
+            "vote_id": true,
+            "item_id": true,
+            "vote": true,
+            "ip_hash": true,
+            "created_at": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "KEYSTATION_FAQ_VOTE_ITEM_IP": true,
+            "KEYSTATION_FAQ_VOTE_ITEM_ID_KEYSTATION_FAQ_ITEM_ID": true
+        },
+        "index": {
+            "KEYSTATION_FAQ_VOTE_ITEM_ID": true
+        }
+    },
+    "etechflow_faq_pending": {
+        "column": {
+            "pending_id": true,
+            "category_id": true,
+            "question": true,
+            "visitor_name": true,
+            "visitor_email": true,
+            "visitor_ip": true,
+            "status": true,
+            "admin_note": true,
+            "approved_item_id": true,
+            "created_at": true
+        },
+        "constraint": {
+            "PRIMARY": true
+        },
+        "index": {
+            "KEYSTATION_FAQ_PENDING_STATUS": true,
+            "KEYSTATION_FAQ_PENDING_CREATED": true
+        }
+    },
+    "etechflow_faq_tag": {
+        "column": {
+            "tag_id": true,
+            "slug": true,
+            "label": true,
+            "is_active": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "KEYSTATION_FAQ_TAG_SLUG": true
+        }
+    },
+    "etechflow_faq_item_tag": {
+        "column": {
+            "item_id": true,
+            "tag_id": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "KS_FAQ_ITM_TAG_ITM_ID_KS_FAQ_ITM_ID": true,
+            "KS_FAQ_ITM_TAG_TAG_ID_KS_FAQ_TAG_ID": true
+        },
+        "index": {
+            "KEYSTATION_FAQ_ITEM_TAG_TAG_ID": true
+        }
+    }
+}

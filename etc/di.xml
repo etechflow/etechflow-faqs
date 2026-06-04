@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+
+    <preference for="Etechflow\Faq\Api\FaqRepositoryInterface"
+                type="Etechflow\Faq\Model\FaqRepository"/>
+
+    <preference for="Etechflow\Faq\Api\Data\CategoryInterface"
+                type="Etechflow\Faq\Model\Category"/>
+
+    <preference for="Etechflow\Faq\Api\Data\ItemInterface"
+                type="Etechflow\Faq\Model\Item"/>
+
+    <!-- Contribute FAQ URLs to sitemap.xml -->
+    <type name="Magento\Sitemap\Model\ItemProvider\Composite">
+        <arguments>
+            <argument name="itemProviders" xsi:type="array">
+                <item name="etechflow_faq" xsi:type="object">Etechflow\Faq\Model\Sitemap\ItemProvider</item>
+            </argument>
+        </arguments>
+    </type>
+
+</config>

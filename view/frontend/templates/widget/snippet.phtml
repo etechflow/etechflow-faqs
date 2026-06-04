@@ -1,0 +1,63 @@
+<?php
+declare(strict_types=1);
+/** @var \Etechflow\Faq\Block\Widget\Snippet $block */
+/** @var \Magento\Framework\Escaper $escaper */
+
+$items = $block->getResolvedItems();
+if (empty($items)) { return; }
+
+$title       = trim((string) $block->getData('title'));
+$showViewAll = (int) $block->getData('show_view_all') === 1;
+?>
+<aside class="kfaq-widget" itemscope itemtype="https://schema.org/FAQPage">
+    <?php if ($title): ?>
+        <h3 class="kfaq-widget-title"><?= $escaper->escapeHtml($title) ?></h3>
+    <?php endif; ?>
+    <ul class="kfaq-widget-list">
+        <?php foreach ($items as $i):
+            $catIdent = $block->getCategoryIdentifierForItem($i);
+            $slug     = (string) ($i->getData('url_key') ?? '');
+            $href     = $catIdent && $slug ? $block->getDetailUrl($catIdent, $slug) : '';
+        ?>
+            <li class="kfaq-widget-item"
+                itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <details>
+                    <summary itemprop="name"><?= $escaper->escapeHtml($i->getQuestion()) ?></summary>
+                    <div class="kfaq-widget-ans"
+                         itemprop="acceptedAnswer" itemscope itemtype="https://schema.org/Answer">
+                        <meta itemprop="text" content="<?= $escaper->escapeHtmlAttr(trim(strip_tags($i->getAnswer()))) ?>">
+                        <?= /* @noEscape */ $i->getAnswer() ?>
+                        <?php if ($href): ?>
+                            <p class="kfaq-widget-readmore">
+                                <a href="<?= $escaper->escapeUrl($href) ?>"><?= $escaper->escapeHtml(__('Read full answer')) ?> &rsaquo;</a>
+                            </p>
+                        <?php endif; ?>
+                    </div>
+                </details>
+            </li>
+        <?php endforeach; ?>
+    </ul>
+    <?php if ($showViewAll): ?>
+        <p class="kfaq-widget-viewall">
+            <a href="<?= $escaper->escapeUrl($block->getListingUrl()) ?>"><?= $escaper->escapeHtml(__('View all FAQs')) ?> &rsaquo;</a>
+        </p>
+    <?php endif; ?>
+</aside>
+
+<style>
+.kfaq-widget{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:18px 20px;margin:18px 0;font-size:.9rem}
+.kfaq-widget-title{font-size:1.05rem;font-weight:800;color:#0E1025;margin:0 0 12px}
+.kfaq-widget-list{list-style:none;padding:0;margin:0}
+.kfaq-widget-item{border-top:1px solid #f3f4f6;padding:10px 0}
+.kfaq-widget-item:first-child{border-top:none;padding-top:0}
+.kfaq-widget-item summary{cursor:pointer;font-weight:700;color:#0E1025;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.kfaq-widget-item summary::-webkit-details-marker{display:none}
+.kfaq-widget-item summary::after{content:"+";font-size:1.1rem;color:#9ca3af;flex-shrink:0;transition:transform .15s}
+.kfaq-widget-item details[open] > summary::after{content:"−"}
+.kfaq-widget-ans{padding:10px 0 4px;color:#374151;line-height:1.65;font-size:.88rem}
+.kfaq-widget-ans p{margin:0 0 8px}
+.kfaq-widget-readmore{margin:8px 0 0;font-size:.78rem}
+.kfaq-widget-readmore a{color:#0535F5;font-weight:700;text-decoration:none}
+.kfaq-widget-viewall{margin:14px 0 0;text-align:right;font-size:.8rem}
+.kfaq-widget-viewall a{color:#0535F5;font-weight:700;text-decoration:none}
+</style>
