@@ -29,5 +29,12 @@
              parent="Etechflow_Faq::faq_root"
              action="etechflow_faq/pending/index"
              resource="Etechflow_Faq::pending"/>
+        <add id="Etechflow_Faq::license_gate"
+             title="License &amp; Plans"
+             module="Etechflow_Faq"
+             sortOrder="100"
+             parent="Etechflow_Faq::faq_root"
+             action="etechflow_faq/license/gate"
+             resource="Etechflow_Faq::faq"/>
     </menu>
 </config>

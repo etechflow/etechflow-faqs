@@ -20,4 +20,19 @@
         </arguments>
     </type>
 
+    <!--
+      License gate on the FAQ repository. Wraps every read method so that
+      when the licence is invalid, the repository returns empty results -
+      effectively hides ALL FAQ content from REST API consumers, storefront
+      blocks, widget rendering, sitemap contribution, and any other caller.
+      Storefront controller-level forward to noroute is the cheaper layer;
+      this is defense in depth so even API surfaces that bypass controllers
+      can't leak data.
+    -->
+    <type name="Etechflow\Faq\Api\FaqRepositoryInterface">
+        <plugin name="etechflow_faq_repository_license_gate"
+                type="Etechflow\Faq\Plugin\Api\FaqRepositoryGatePlugin"
+                sortOrder="10"/>
+    </type>
+
 </config>
