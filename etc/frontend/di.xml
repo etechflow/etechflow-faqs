@@ -1,15 +1,45 @@
 <?xml version="1.0"?>
+<!--
+  Frontend-area DI for Etechflow_Faq.
+
+  Two things:
+    1. Register the custom Router that matches /faqs/{category}/{slug}
+       URLs for FAQ detail pages. Without this, every detail page 404s
+       because Magento's standard router only knows about /faqs/index/...
+       NOT the 3-segment slug pattern.
+    2. Register the storefront license-gate plugin against every FAQ
+       frontend controller so unlicensed installs forward to noroute.
+-->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+
+    <!-- Custom URL router for /faqs/{cat}/{slug} pattern -->
     <type name="Magento\Framework\App\RouterList">
         <arguments>
             <argument name="routerList" xsi:type="array">
-                <item name="etechflow_faq" xsi:type="array">
+                <item name="etechflow_faq_router" xsi:type="array">
                     <item name="class" xsi:type="string">Etechflow\Faq\Controller\Router</item>
                     <item name="disable" xsi:type="boolean">false</item>
                     <item name="sortOrder" xsi:type="string">22</item>
                 </item>
             </argument>
         </arguments>
+    </type>
+
+    <!-- License gate plugins for storefront controllers -->
+    <type name="Etechflow\Faq\Controller\Index\Index">
+        <plugin name="etechflow_faq_storefront_gate_index" type="Etechflow\Faq\Plugin\Controller\StorefrontGatePlugin" sortOrder="10"/>
+    </type>
+    <type name="Etechflow\Faq\Controller\View\Index">
+        <plugin name="etechflow_faq_storefront_gate_view" type="Etechflow\Faq\Plugin\Controller\StorefrontGatePlugin" sortOrder="10"/>
+    </type>
+    <type name="Etechflow\Faq\Controller\Vote\Index">
+        <plugin name="etechflow_faq_storefront_gate_vote" type="Etechflow\Faq\Plugin\Controller\StorefrontGatePlugin" sortOrder="10"/>
+    </type>
+    <type name="Etechflow\Faq\Controller\Submit\Index">
+        <plugin name="etechflow_faq_storefront_gate_submit" type="Etechflow\Faq\Plugin\Controller\StorefrontGatePlugin" sortOrder="10"/>
+    </type>
+    <type name="Etechflow\Faq\Controller\Search\Index">
+        <plugin name="etechflow_faq_storefront_gate_search" type="Etechflow\Faq\Plugin\Controller\StorefrontGatePlugin" sortOrder="10"/>
     </type>
 </config>

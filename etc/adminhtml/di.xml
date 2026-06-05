@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<!--
+  Admin-area DI for Etechflow_Faq.
+
+  Registers the License gate plugin against every concrete admin controller
+  that should be locked when the licence is invalid. License/* controllers
+  (Gate, Checkout, Activated) are intentionally NOT in this list — the
+  merchant must always be able to reach the gate page and the post-payment
+  landing.
+
+  FAQ has no abstract base controller class (each extends Magento\Backend\App\Action
+  directly), so we list each concrete controller individually.
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+
+    <!-- Item controllers -->
+    <type name="Etechflow\Faq\Controller\Adminhtml\Item\Index">
+        <plugin name="etechflow_faq_license_gate_item_index" type="Etechflow\Faq\Plugin\Adminhtml\LicenseGatePlugin" sortOrder="10"/>
+    </type>
+    <type name="Etechflow\Faq\Controller\Adminhtml\Item\NewAction">
+        <plugin name="etechflow_faq_license_gate_item_new" type="Etechflow\Faq\Plugin\Adminhtml\LicenseGatePlugin" sortOrder="10"/>
+    </type>
+    <type name="Etechflow\Faq\Controller\Adminhtml\Item\Edit">
+        <plugin name="etechflow_faq_license_gate_item_edit" type="Etechflow\Faq\Plugin\Adminhtml\LicenseGatePlugin" sortOrder="10"/>
+    </type>
+    <type name="Etechflow\Faq\Controller\Adminhtml\Item\Save">
+        <plugin name="etechflow_faq_license_gate_item_save" type="Etechflow\Faq\Plugin\Adminhtml\LicenseGatePlugin" sortOrder="10"/>
+    </type>
+    <type name="Etechflow\Faq\Controller\Adminhtml\Item\Delete">
+        <plugin name="etechflow_faq_license_gate_item_delete" type="Etechflow\Faq\Plugin\Adminhtml\LicenseGatePlugin" sortOrder="10"/>
+    </type>
+
+    <!-- Category controllers -->
+    <type name="Etechflow\Faq\Controller\Adminhtml\Category\Index">
+        <plugin name="etechflow_faq_license_gate_cat_index" type="Etechflow\Faq\Plugin\Adminhtml\LicenseGatePlugin" sortOrder="10"/>
+    </type>
+    <type name="Etechflow\Faq\Controller\Adminhtml\Category\NewAction">
+        <plugin name="etechflow_faq_license_gate_cat_new" type="Etechflow\Faq\Plugin\Adminhtml\LicenseGatePlugin" sortOrder="10"/>
+    </type>
+    <type name="Etechflow\Faq\Controller\Adminhtml\Category\Edit">
+        <plugin name="etechflow_faq_license_gate_cat_edit" type="Etechflow\Faq\Plugin\Adminhtml\LicenseGatePlugin" sortOrder="10"/>
+    </type>
+    <type name="Etechflow\Faq\Controller\Adminhtml\Category\Save">
+        <plugin name="etechflow_faq_license_gate_cat_save" type="Etechflow\Faq\Plugin\Adminhtml\LicenseGatePlugin" sortOrder="10"/>
+    </type>
+    <type name="Etechflow\Faq\Controller\Adminhtml\Category\Delete">
+        <plugin name="etechflow_faq_license_gate_cat_delete" type="Etechflow\Faq\Plugin\Adminhtml\LicenseGatePlugin" sortOrder="10"/>
+    </type>
+
+    <!-- Pending moderation controllers -->
+    <type name="Etechflow\Faq\Controller\Adminhtml\Pending\Index">
+        <plugin name="etechflow_faq_license_gate_pending_index" type="Etechflow\Faq\Plugin\Adminhtml\LicenseGatePlugin" sortOrder="10"/>
+    </type>
+    <type name="Etechflow\Faq\Controller\Adminhtml\Pending\Approve">
+        <plugin name="etechflow_faq_license_gate_pending_approve" type="Etechflow\Faq\Plugin\Adminhtml\LicenseGatePlugin" sortOrder="10"/>
+    </type>
+    <type name="Etechflow\Faq\Controller\Adminhtml\Pending\Reject">
+        <plugin name="etechflow_faq_license_gate_pending_reject" type="Etechflow\Faq\Plugin\Adminhtml\LicenseGatePlugin" sortOrder="10"/>
+    </type>
+
+    <!-- Category image upload (used by category form's image picker) -->
+    <type name="Etechflow\Faq\Controller\Adminhtml\Categoryimage\Upload">
+        <plugin name="etechflow_faq_license_gate_categoryimage_upload" type="Etechflow\Faq\Plugin\Adminhtml\LicenseGatePlugin" sortOrder="10"/>
+    </type>
+</config>
