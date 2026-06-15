@@ -2,7 +2,7 @@
     "name": "etechflow/module-faq",
     "description": "Help-Centre / FAQ module for Magento 2 with categories, slug-based detail pages, search, related articles, REST API, and admin management. Theme-agnostic \u2014 works on Hyv\u00e4, Luma, and any custom theme.",
     "type": "magento2-module",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "license": "MIT",
     "keywords": [
         "magento",

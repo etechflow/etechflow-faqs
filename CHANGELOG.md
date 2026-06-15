@@ -37,7 +37,7 @@ Dev hosts (localhost, `*.test`, `*.local`, `staging.*`, `*.ngrok-free.dev`, etc.
 
 ### Notes
 
-- `License Portal URL` defaults to `https://subpanel-paralyses-president.ngrok-free.dev/license/validate` (the eTechFlow portal). For production, change this when eTechFlow publishes the final portal URL.
+- `License Portal URL` defaults to `https://license-service.etechflow.com/license/validate` (the eTechFlow portal). For production, change this when eTechFlow publishes the final portal URL.
 - Portal IP-revoke + suspend lock the module within ~60 seconds (`CACHE_TTL_REJECT` = 60). Re-activating in the portal restores the module within the same window via `issued_key` auto-restore.
 
 ---
