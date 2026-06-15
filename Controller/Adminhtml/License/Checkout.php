@@ -25,11 +25,11 @@ class Checkout extends Action
     private const XML_STRIPE_SECRET = 'etechflow_faq/payment/stripe_secret_key';
     private const XML_STRIPE_CURR   = 'etechflow_faq/payment/stripe_currency';
 
-    /** Plan slugs -> [name, amount in cents, display]. Tier-based plans. */
+    /** Plan slugs -> [name, amount in cents, display]. Period-based plans (match portal). */
     private const PLAN_INFO = [
-        'faq_starter'      => ['name' => 'FAQ / Help Centre — Starter',      'amount' => 900,  'display' => '$9/month'],
-        'faq_professional' => ['name' => 'FAQ / Help Centre — Professional', 'amount' => 1900, 'display' => '$19/month'],
-        'faq_enterprise'   => ['name' => 'FAQ / Help Centre — Enterprise',   'amount' => 4900, 'display' => '$49/month'],
+        'faq_weekly'  => ['name' => 'FAQ / Help Centre — Weekly',  'amount' => 900,   'display' => '$9/week'],
+        'faq_monthly' => ['name' => 'FAQ / Help Centre — Monthly', 'amount' => 2900,  'display' => '$29/month'],
+        'faq_yearly'  => ['name' => 'FAQ / Help Centre — Yearly',  'amount' => 29000, 'display' => '$290/year'],
     ];
 
     public function __construct(
