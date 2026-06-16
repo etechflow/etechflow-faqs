@@ -136,11 +136,8 @@ class LicenseValidator
 
     public function isProductionEnvironment(): bool
     {
-        $value = $this->scopeConfig->getValue(self::XML_PATH_PRODUCTION_ENVIRONMENT, ScopeInterface::SCOPE_STORE);
-        if ($value === null || $value === '') {
-            return true;
-        }
-        return (bool) $value;
+        // Production-environment toggle removed: licensing is always enforced.
+        return true;
     }
 
     public function getPortalUrl(): string
