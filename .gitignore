@@ -9,3 +9,8 @@ desktop.ini
 
 # Logs
 *.log
+
+# stray editor/backup files
+*.bak*
+*.orig
+*~
