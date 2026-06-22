@@ -88,12 +88,8 @@ class LicenseValidator
         if ($host === '') {
             return false;
         }
-        if (!$this->isProductionEnvironment()) {
-            return true;
-        }
-        if ($this->isDevelopmentHost($host)) {
-            return true;
-        }
+        // Legacy sandbox / dev-host bypass removed: licensing is enforced
+        // universally (portal-first) on every host, including local/cloud/tunnel.
         return $this->checkKey($host);
     }
 

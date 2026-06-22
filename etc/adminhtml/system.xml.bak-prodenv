@@ -1,0 +1,270 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <tab id="etechflow" translate="label" sortOrder="350">
+            <label>EtechFlow</label>
+        </tab>
+        <section id="etechflow_faq" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+            <label>FAQ / Help Centre</label>
+            <tab>etechflow</tab>
+            <resource>Etechflow_Faq::faq</resource>
+
+            <group id="module_status" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Module Status</label>
+                <frontend_model>Etechflow\Faq\Block\Adminhtml\System\Config\ModuleStatus</frontend_model>
+            </group>
+
+            <group id="license" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
+                <label>License</label>
+                <field id="production_environment" translate="label comment" type="select" sortOrder="5" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Production Environment</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[
+                        <strong>Yes</strong> = this is your live site. The module checks the licence
+                        key against the current domain. If invalid, the module silently disables itself.<br/>
+                        <strong>No</strong> = this is dev/staging. The module runs at full features
+                        without a licence — use this on non-standard dev domains the auto-detector misses.<br/>
+                        Default: Yes.
+                    ]]></comment>
+                </field>
+                <field id="license_key" translate="label comment" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>License Key</label>
+                    <comment><![CDATA[
+                        Paste the SP-XXXX key from your purchase email, or a per-module HMAC key, or a
+                        shared eTechFlow bundle key. Bound to the domain you provided at checkout.<br/>
+                        Auto-bypassed for development hosts. <code>www.</code> prefix is normalised.
+                    ]]></comment>
+                </field>
+                <field id="bundle_license_key" translate="label comment" type="obscure" sortOrder="15" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Bundle License Key</label>
+                    <backend_model>Magento\Config\Model\Config\Backend\Encrypted</backend_model>
+                    <config_path>etechflow_bundle/license/license_key</config_path>
+                    <comment><![CDATA[
+                        Shared key across ALL eTechFlow modules. If you purchased the eTechFlow Bundle,
+                        paste it here once and every installed eTechFlow module activates.<br/>
+                        Stored encrypted.
+                    ]]></comment>
+                </field>
+                <field id="portal_url" translate="label comment" type="text" sortOrder="20" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>License Portal URL</label>
+                    <comment><![CDATA[
+                        The eTechFlow portal endpoint that validates SP-XXXX subscription keys.
+                        Default: <code>https://subpanel-paralyses-president.ngrok-free.dev/license/validate</code>.
+                        Change only if eTechFlow notifies you of a new portal URL.
+                    ]]></comment>
+                </field>
+                <field id="issued_key" translate="label" type="obscure" sortOrder="30" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Last Issued Key (auto-managed)</label>
+                    <backend_model>Magento\Config\Model\Config\Backend\Encrypted</backend_model>
+                    <comment><![CDATA[
+                        Read-only audit field. Auto-populated when the portal accepts a key for the first time.
+                        Used by the module to auto-restore the licence after a portal IP-block lift.
+                        Do not edit manually.
+                    ]]></comment>
+                </field>
+            </group>
+
+            <group id="payment" translate="label" type="text" sortOrder="5" showInDefault="1" showInWebsite="0" showInStore="0">
+                <label>Payment (Stripe)</label>
+                <field id="stripe_secret_key" translate="label comment" type="obscure" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Stripe Secret Key</label>
+                    <backend_model>Magento\Config\Model\Config\Backend\Encrypted</backend_model>
+                    <comment><![CDATA[
+                        Your Stripe <code>sk_test_...</code> (test mode) or <code>sk_live_...</code> (live).
+                        Used to create the Checkout Session when a merchant clicks Pay on the gate page.
+                        Stored encrypted.
+                    ]]></comment>
+                </field>
+                <field id="stripe_publishable_key" translate="label comment" type="text" sortOrder="20" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Stripe Publishable Key</label>
+                    <comment><![CDATA[
+                        Your Stripe <code>pk_test_...</code> or <code>pk_live_...</code> key.
+                    ]]></comment>
+                </field>
+                <field id="stripe_currency" translate="label comment" type="text" sortOrder="30" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Currency</label>
+                    <comment><![CDATA[
+                        Three-letter Stripe currency code, lowercase. Default: <code>usd</code>.
+                    ]]></comment>
+                </field>
+            </group>
+
+            <group id="branding" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Branding</label>
+                <field id="primary_color" translate="label comment" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Primary color</label>
+                    <comment>CSS color (hex / rgb / name). Used for active states, blockquote borders, helpful "No" button.</comment>
+                </field>
+                <field id="secondary_color" translate="label comment" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Secondary color</label>
+                    <comment>Used for links, search button background, eyebrow text, related-article hover.</comment>
+                </field>
+                <field id="text_color" translate="label comment" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Text color</label>
+                    <comment>Headings, body text.</comment>
+                </field>
+                <field id="font_family" translate="label comment" type="select" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Font</label>
+                    <source_model>Etechflow\Faq\Model\Source\FontFamily</source_model>
+                    <comment>Default: inherits from your store theme. Pick a popular sans-serif, or choose Custom and fill the field below.</comment>
+                </field>
+                <field id="font_family_custom" translate="label comment" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Custom font CSS</label>
+                    <comment>Only used when "Font" is set to Custom. Example: "Cormorant Garamond, serif"</comment>
+                    <depends>
+                        <field id="font_family">__custom__</field>
+                    </depends>
+                </field>
+            </group>
+
+            <group id="seo" translate="label" type="text" sortOrder="25" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>SEO</label>
+                <field id="enable_schema_jsonld" translate="label comment" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Emit Schema.org FAQPage JSON-LD</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Adds FAQPage / Question structured data so Google can show your Q&amp;A in search results.</comment>
+                </field>
+                <field id="enable_breadcrumb_jsonld" translate="label comment" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Emit BreadcrumbList JSON-LD</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="enable_opengraph" translate="label comment" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Emit OpenGraph + Twitter Card meta</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="enable_sitemap" translate="label comment" type="select" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Include FAQs in sitemap.xml</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Adds listing + every detail page to Magento's generated sitemap.</comment>
+                </field>
+            </group>
+
+            <group id="features" translate="label" type="text" sortOrder="45" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Features</label>
+                <field id="enable_featured_strip" translate="label comment" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Show "Featured / Popular" strip on listing</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Shows items marked Featured at the top of the /faqs page.</comment>
+                </field>
+                <field id="enable_visitor_submissions" translate="label comment" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Allow visitor question submissions</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Adds an "Ask your own question" form on the listing. Submissions go to Content -> FAQs -> Pending for admin moderation. Magento reCAPTCHA recommended.</comment>
+                </field>
+                <field id="enable_tags" translate="label comment" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable tags</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Items can be tagged; visitors can browse tag pages at /faqs/tag/&lt;slug&gt;.</comment>
+                </field>
+                <field id="enable_ajax_search" translate="label comment" type="select" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable AJAX search suggestions</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Typeahead dropdown on the listing search input. Falls back to client-side filter when off.</comment>
+                </field>
+            </group>
+
+            <group id="hero" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Hero (listing page)</label>
+                <field id="enable" translate="label comment" type="select" sortOrder="5" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Show hero section</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Show/hide the banner at the top of the /faqs listing page.</comment>
+                </field>
+                <field id="image_path" translate="label comment" type="image" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Hero image</label>
+                    <backend_model>Magento\Config\Model\Config\Backend\Image</backend_model>
+                    <upload_dir config="system/filesystem/media" scope_info="1">etechflow_faq/hero</upload_dir>
+                    <base_url type="media" scope_info="1">etechflow_faq/hero</base_url>
+                    <comment><![CDATA[
+                        Upload a hero banner image (JPG, PNG, WebP, or GIF). Saved under
+                        <code>pub/media/etechflow_faq/hero/</code>.<br/>
+                        Leave blank to use the default CSS gradient fallback.<br/>
+                        You can also type a path manually (e.g. <code>cms/faqs/hero.png</code>) — bare filenames
+                        are auto-resolved under the upload directory; paths with <code>/</code> are used as-is.
+                    ]]></comment>
+                </field>
+                <field id="title" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Hero title</label>
+                </field>
+                <field id="subtitle" translate="label" type="textarea" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Hero subtitle</label>
+                </field>
+            </group>
+
+            <group id="contact" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Contact (detail page right-rail + listing footer)</label>
+                <field id="show_contact_card" translate="label comment" type="select" sortOrder="5" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Show contact card on detail pages</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>The phone / email / contact card in the right rail of each FAQ detail page. Individual rows still hide automatically when their field below is blank.</comment>
+                </field>
+                <field id="show_need_more_help" translate="label comment" type="select" sortOrder="6" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Show "Need more help" cards on listing</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>The contact cards at the bottom of the /faqs listing page.</comment>
+                </field>
+                <field id="phone" translate="label comment" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Phone</label>
+                    <comment>Displayed in the contact card. Leave blank to hide the phone row.</comment>
+                </field>
+                <field id="phone_hours" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Phone hours</label>
+                </field>
+                <field id="email" translate="label comment" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Email</label>
+                    <comment>Leave blank to hide the email row.</comment>
+                </field>
+                <field id="email_response_time" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Email response time copy</label>
+                </field>
+                <field id="contact_form_url" translate="label comment" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Contact form URL</label>
+                    <comment>Relative route (e.g. contact) or absolute URL.</comment>
+                </field>
+                <field id="store_finder_url" translate="label comment" type="text" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Store finder URL</label>
+                    <comment>Relative route or absolute URL. Leave blank to hide the store-finder card.</comment>
+                </field>
+                <field id="phone_icon" translate="label" type="select" sortOrder="70" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Phone card icon</label>
+                    <source_model>Etechflow\Faq\Model\Source\NmhIcon</source_model>
+                </field>
+                <field id="email_icon" translate="label" type="select" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Email card icon</label>
+                    <source_model>Etechflow\Faq\Model\Source\NmhIcon</source_model>
+                </field>
+                <field id="contact_form_icon" translate="label" type="select" sortOrder="90" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Contact-form card icon</label>
+                    <source_model>Etechflow\Faq\Model\Source\NmhIcon</source_model>
+                </field>
+                <field id="store_finder_icon" translate="label" type="select" sortOrder="100" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Store-finder card icon</label>
+                    <source_model>Etechflow\Faq\Model\Source\NmhIcon</source_model>
+                </field>
+            </group>
+
+            <group id="display" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Display</label>
+                <field id="related_articles_count" translate="label comment" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Related articles count</label>
+                    <comment>Max number of related articles shown on the detail page. Default 6.</comment>
+                    <validate>required-entry validate-zero-or-greater-number</validate>
+                </field>
+                <field id="show_helpful_buttons" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Show "Was this helpful?" buttons</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="enable_search_widget" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable search widget on listing</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="show_trust_bar" translate="label comment" type="select" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Show trust bar on listing</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>The "Fast Delivery / Expert Support / Secure Payment / Quality Guarantee" strip near the bottom of the /faqs listing page.</comment>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>
